@@ -1,3 +1,5 @@
 # esbuild (used by Vitest) needs its postinstall to set up its native binary.
 allowBuilds:
   esbuild: true
+  # Astro's image optimisation only; unused since this app has no <Image>.
+  sharp: false
