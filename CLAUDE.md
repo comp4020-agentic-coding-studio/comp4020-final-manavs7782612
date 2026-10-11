@@ -45,3 +45,15 @@ silently reinterpreting the brief.
    Don't report a change as done without both passing locally against a
    built app (`pnpm build` then run `dist/server/entry.mjs`, per
    `spec/global-setup.ts`).
+8. **Keep the look Apple-ish: calm, soft, and consistent across pages.**
+   The design language is set in `src/pages/index.astro` and mirrored in
+   `src/pages/readme.astro` — a frosted `.card` (blur + translucency) on a
+   soft radial-gradient background, `-apple-system` as the font stack, large
+   tabular-numeral type for the count, fully-rounded buttons, and
+   light/dark values both driven off the same `:root` custom properties (so
+   dark mode is "pick new values for the variables," not a second
+   stylesheet). New UI should reuse those variables and the `.card`
+   pattern rather than inventing a new look per page. Motion should read as
+   a spring (the `cubic-bezier(0.34, 1.56, 0.64, 1)` easing already used on
+   the buttons and the count's pulse), not a linear fade — that bounce is
+   the one bit of personality the design has, so don't flatten it out.

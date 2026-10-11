@@ -21,21 +21,93 @@ const readmeHtml = marked.parse(readmeMarkdown);
     <style>
       :root {
         color-scheme: light dark;
-        font-family: system-ui, sans-serif;
+        --bg: #f5f5f7;
+        --card-bg: rgba(255, 255, 255, 0.78);
+        --card-border: rgba(0, 0, 0, 0.06);
+        --text: #1d1d1f;
+        --text-secondary: rgba(60, 60, 67, 0.6);
+        --accent: #0071e3;
+        --shadow:
+          0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #000;
+          --card-bg: rgba(28, 28, 30, 0.78);
+          --card-border: rgba(255, 255, 255, 0.08);
+          --text: #f5f5f7;
+          --text-secondary: rgba(235, 235, 245, 0.6);
+          --accent: #0a84ff;
+          --shadow:
+            0 20px 40px -12px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+      }
+      * {
+        box-sizing: border-box;
       }
       body {
-        max-width: 38rem;
-        margin: 2rem auto;
-        padding: 0 1rem;
-        line-height: 1.5;
+        min-height: 100vh;
+        margin: 0;
+        padding: 2.5rem 1rem;
+        display: flex;
+        justify-content: center;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+          "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+        background:
+          radial-gradient(circle at 15% -10%, rgba(10, 132, 255, 0.08), transparent 45%),
+          radial-gradient(circle at 100% 10%, rgba(255, 55, 95, 0.06), transparent 45%),
+          var(--bg);
       }
-      a {
-        color: inherit;
+      .card {
+        width: min(92vw, 640px);
+        height: fit-content;
+        background: var(--card-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid var(--card-border);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        padding: 2.5rem 2.5rem 2rem;
+        line-height: 1.6;
+      }
+      .back {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .back:hover {
+        text-decoration: underline;
+      }
+      main :global(h1) {
+        letter-spacing: -0.02em;
+        margin-top: 0;
+      }
+      main :global(h2) {
+        letter-spacing: -0.01em;
+        border-top: 1px solid var(--card-border);
+        padding-top: 1.5rem;
+        margin-top: 2rem;
+      }
+      main :global(a) {
+        color: var(--accent);
+      }
+      main :global(code) {
+        background: rgba(118, 118, 128, 0.12);
+        padding: 0.15em 0.4em;
+        border-radius: 6px;
+        font-size: 0.9em;
       }
     </style>
   </head>
   <body>
-    <p><a href="/">← back to the tally</a></p>
-    <main set:html={readmeHtml} />
+    <div class="card">
+      <a class="back" href="/">← back to the tally</a>
+      <main set:html={readmeHtml} />
+    </div>
   </body>
 </html>

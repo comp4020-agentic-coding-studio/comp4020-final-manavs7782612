@@ -14,81 +14,199 @@ const history = getHistory(20);
     <style>
       :root {
         color-scheme: light dark;
-        font-family: system-ui, sans-serif;
+        --bg: #f5f5f7;
+        --card-bg: rgba(255, 255, 255, 0.78);
+        --card-border: rgba(0, 0, 0, 0.06);
+        --text: #1d1d1f;
+        --text-secondary: rgba(60, 60, 67, 0.6);
+        --accent: #0071e3;
+        --shadow:
+          0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #000;
+          --card-bg: rgba(28, 28, 30, 0.78);
+          --card-border: rgba(255, 255, 255, 0.08);
+          --text: #f5f5f7;
+          --text-secondary: rgba(235, 235, 245, 0.6);
+          --accent: #0a84ff;
+          --shadow:
+            0 20px 40px -12px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+      }
+      * {
+        box-sizing: border-box;
       }
       body {
-        max-width: 32rem;
-        margin: 2rem auto;
-        padding: 0 1rem;
+        min-height: 100vh;
+        margin: 0;
+        padding: 2rem 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+          "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+        -webkit-font-smoothing: antialiased;
+        background:
+          radial-gradient(circle at 15% -10%, rgba(10, 132, 255, 0.08), transparent 45%),
+          radial-gradient(circle at 100% 10%, rgba(255, 55, 95, 0.06), transparent 45%),
+          var(--bg);
+      }
+      .card {
+        width: min(92vw, 420px);
+        background: var(--card-bg);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border: 1px solid var(--card-border);
+        border-radius: 28px;
+        box-shadow: var(--shadow);
+        padding: 2.5rem 2rem 2rem;
         text-align: center;
       }
       h1 {
-        font-size: 1.1rem;
-        font-weight: 500;
-        opacity: 0.8;
+        font-size: 0.9375rem;
+        font-weight: 590;
+        letter-spacing: -0.01em;
+        color: var(--text-secondary);
+        margin: 0;
       }
       #count {
-        font-size: 6rem;
+        font-size: 6.5rem;
         font-weight: 700;
+        letter-spacing: -0.03em;
         line-height: 1;
         margin: 0.5rem 0;
         font-variant-numeric: tabular-nums;
+        transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      #count.pulse {
+        transform: scale(1.08);
       }
       .buttons {
         display: flex;
         justify-content: center;
-        gap: 1rem;
-        margin: 1.5rem 0;
+        gap: 1.25rem;
+        margin: 1.75rem 0 0.25rem;
       }
       button {
-        font-size: 2rem;
-        width: 4rem;
-        height: 4rem;
-        border-radius: 999px;
-        border: 2px solid currentColor;
-        background: transparent;
-        color: inherit;
+        font-size: 1.75rem;
+        width: 4.25rem;
+        height: 4.25rem;
+        border-radius: 50%;
+        border: none;
+        background: rgba(118, 118, 128, 0.12);
+        color: var(--text);
         cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+          background 0.2s ease,
+          filter 0.2s ease;
+      }
+      button:hover {
+        background: rgba(118, 118, 128, 0.18);
       }
       button:active {
-        transform: scale(0.95);
+        transform: scale(0.9);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      #plus {
+        background: var(--accent);
+        color: #fff;
+      }
+      #plus:hover {
+        filter: brightness(1.08);
       }
       #status {
         min-height: 1.2em;
-        opacity: 0.7;
-        font-size: 0.9rem;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        margin: 0.75rem 0 0;
+      }
+      .history-label {
+        margin-top: 2rem;
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        text-align: left;
+      }
+      ul.history {
+        list-style: none;
+        margin: 0.5rem 0 0;
+        padding: 0;
+        text-align: left;
+        font-size: 0.85rem;
+        max-height: 10rem;
+        overflow-y: auto;
+        border-top: 1px solid var(--card-border);
+      }
+      ul.history li {
+        padding: 0.5rem 0.1rem;
+        border-bottom: 1px solid var(--card-border);
+        color: var(--text-secondary);
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+      ul.history li:last-child {
+        border-bottom: none;
+      }
+      ul.history .delta {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        color: var(--text);
       }
       footer {
-        margin-top: 2rem;
-        font-size: 0.85rem;
-        opacity: 0.6;
+        margin-top: 1.75rem;
+        font-size: 0.8rem;
       }
       footer a {
-        color: inherit;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      footer a:hover {
+        text-decoration: underline;
       }
     </style>
   </head>
   <body>
-    <h1>People in the COMP4020 crit room right now</h1>
-    <div id="count">{count}</div>
-    <div class="buttons">
-      <button type="button" id="minus" aria-label="One person just left">−</button>
-      <button type="button" id="plus" aria-label="One person just arrived">+</button>
-    </div>
-    <p id="status" role="status" aria-live="polite"></p>
-    <p>
-      Last {history.length} change{history.length === 1 ? "" : "s"} (reload to refresh this part):
-    </p>
-    <ul style="text-align: left; font-size: 0.85rem; opacity: 0.8;">
+    <main class="card">
+      <h1>People in the COMP4020 crit room right now</h1>
+      <div id="count">{count}</div>
+      <div class="buttons">
+        <button type="button" id="minus" aria-label="One person just left">−</button>
+        <button type="button" id="plus" aria-label="One person just arrived">+</button>
+      </div>
+      <p id="status" role="status" aria-live="polite"></p>
       {
-        history.map((h) => (
-          <li>
-            {new Date(h.at).toLocaleTimeString("en-AU")} — {h.delta > 0 ? "+1" : "−1"} → {h.count}
-          </li>
-        ))
+        history.length > 0 && (
+          <>
+            <p class="history-label">
+              Last {history.length} change{history.length === 1 ? "" : "s"} (reload to refresh
+              this part)
+            </p>
+            <ul class="history">
+              {history.map((h) => (
+                <li>
+                  <span>{new Date(h.at).toLocaleTimeString("en-AU")}</span>
+                  <span class="delta">
+                    {h.delta > 0 ? "+1" : "−1"} → {h.count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
       }
-    </ul>
-    <footer><a href="/readme/">About this app</a></footer>
+      <footer><a href="/readme/">About this app</a></footer>
+    </main>
     <script src="/tally.js" defer></script>
   </body>
 </html>

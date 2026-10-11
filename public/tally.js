@@ -14,7 +14,13 @@ function setStatus(text) {
 function connect() {
   const source = new EventSource("/api/tally/stream");
   source.addEventListener("count", (event) => {
+    if (countEl.textContent === event.data) return;
     countEl.textContent = event.data;
+    countEl.classList.remove("pulse");
+    // restart the animation even if it's already mid-pulse from a prior update
+    void countEl.offsetWidth;
+    countEl.classList.add("pulse");
+    setTimeout(() => countEl.classList.remove("pulse"), 350);
   });
   source.addEventListener("error", () => {
     setStatus("reconnecting…");

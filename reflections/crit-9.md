@@ -2,28 +2,46 @@
 
 **What was the breakthrough that moved the work forward?**
 
-I started this session having done no work at all for weeks 8 or 9, and
-partway through I realised the agent had been building in the wrong repo —
-a different student's, found by matching a pod label against a GitHub
-handle that happened to look similar. The breakthrough wasn't technical, it
-was catching that and stopping immediately rather than letting momentum
-carry it forward. Once I was actually in my own repo, the real unlock was
-scoping small on purpose: a single shared number for one pod's crit room,
-not a generic multi-user chat app. Once the scope was that narrow, the
-"what happens when two people press a button at once" question had one
-obvious, defensible answer — apply a delta, never trust a client's count —
-and everything else (the ADR, the test, the harness rules in CLAUDE.md)
-followed from that one decision instead of needing to be invented
-separately.
+The breakthrough was scoping down before building anything: a single shared
+number for one pod's crit room, not a generic multi-user chat app. The brief
+warns that asking an agent for "a multi-user, real-time website" produces
+the median answer, and I only avoided that by picking something small enough
+to actually mean — one number, no accounts, nobody signs in. Once the scope
+was that narrow, the "what happens when two people act at once" question had
+one obvious, defensible answer: the server applies a `+1`/`-1` delta against
+its own last-written count and never trusts a count the client sends.
+Writing that decision down as an ADR before building it, rather than after,
+is what made the rest fall into place — the test, the harness rules in
+`CLAUDE.md`, and the README's definition of "good" all just restated the
+same decision from a different angle instead of needing to be invented
+separately. Refining it after the first pass meant going back over the
+Dockerfile three times: the first version served a static placeholder, the
+second built the real app but looked for `README.md` in the wrong directory
+inside the image, and only the third actually ran correctly end to end —
+each fix came from running the thing, not from reading the code and
+assuming it was right.
+
+The functional pass left the UI as bare, unstyled HTML, and running it
+locally made that obvious immediately — a correct app that looks like a
+placeholder reads as unfinished, even when it isn't. The second refinement
+pass was design: a frosted glass card, a soft gradient background, Apple's
+system font stack, and a spring-eased pulse on the count when it changes.
+That pass earned its own rule in `CLAUDE.md` once it was done, because
+"good" for this app always included how it feels to glance at mid-crit, not
+just what it does, and that rule now keeps the readme page and the main
+page from drifting apart as either one gets touched again.
 
 **What did this work change about who I want to be as a developer?**
 
-Catching the wrong-repo mistake mid-session was uncomfortable, and it's
-made me want to be the kind of developer who checks the ground they're
-standing on before building on it — which repo, which identity, which
-assumption — rather than one who trusts an agent's confident output because
-it looks finished. I also want to be someone who proves things rather than
-asserts them: I didn't call the Dockerfile done because it built, I called
-it done after restarting the actual container against a mounted volume and
-watching the count survive. That habit cost very little time tonight and
-would have caught a real bug if there'd been one.
+It sharpened a preference for proving things over asserting them. I didn't
+call a piece of this done because it built or because the code looked
+right — I called it done after actually driving the count to zero to check
+it clamps, restarting a container against a mounted volume to check the
+count survives, watching a live SSE connection receive a pushed update
+after a POST, and loading the redesigned pages in a browser rather than
+trusting that CSS compiled. Each of those caught something before it could
+become a demo-day surprise: a wrong file path, a race that wasn't actually
+handled yet, a look that didn't match the app's own definition of good.
+That's the kind of developer I want to be with an agent doing most of the
+typing — the one who insists on watching the real thing run, and look,
+before believing the account of it.
