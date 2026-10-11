@@ -1,0 +1,41 @@
+---
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { marked } from "marked";
+
+export const prerender = false;
+
+// Read relative to the process's cwd (repo root both locally and in the
+// Docker image — see Dockerfile), not import.meta.url: the built file lives
+// under dist/server/pages/, so a relative-to-source path would look there.
+const readmeMarkdown = readFileSync(join(process.cwd(), "README.md"), "utf8");
+const readmeHtml = marked.parse(readmeMarkdown);
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>About — crit room tally</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 38rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      a {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <p><a href="/">← back to the tally</a></p>
+    <main set:html={readmeHtml} />
+  </body>
+</html>

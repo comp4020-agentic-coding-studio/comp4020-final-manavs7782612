@@ -1,0 +1,94 @@
+---
+import { getCount, getHistory } from "../lib/db";
+
+const count = getCount();
+const history = getHistory(20);
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>How busy is the crit room?</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      body {
+        max-width: 32rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        text-align: center;
+      }
+      h1 {
+        font-size: 1.1rem;
+        font-weight: 500;
+        opacity: 0.8;
+      }
+      #count {
+        font-size: 6rem;
+        font-weight: 700;
+        line-height: 1;
+        margin: 0.5rem 0;
+        font-variant-numeric: tabular-nums;
+      }
+      .buttons {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 1.5rem 0;
+      }
+      button {
+        font-size: 2rem;
+        width: 4rem;
+        height: 4rem;
+        border-radius: 999px;
+        border: 2px solid currentColor;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+      button:active {
+        transform: scale(0.95);
+      }
+      #status {
+        min-height: 1.2em;
+        opacity: 0.7;
+        font-size: 0.9rem;
+      }
+      footer {
+        margin-top: 2rem;
+        font-size: 0.85rem;
+        opacity: 0.6;
+      }
+      footer a {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>People in the COMP4020 crit room right now</h1>
+    <div id="count">{count}</div>
+    <div class="buttons">
+      <button type="button" id="minus" aria-label="One person just left">−</button>
+      <button type="button" id="plus" aria-label="One person just arrived">+</button>
+    </div>
+    <p id="status" role="status" aria-live="polite"></p>
+    <p>
+      Last {history.length} change{history.length === 1 ? "" : "s"} (reload to refresh this part):
+    </p>
+    <ul style="text-align: left; font-size: 0.85rem; opacity: 0.8;">
+      {
+        history.map((h) => (
+          <li>
+            {new Date(h.at).toLocaleTimeString("en-AU")} — {h.delta > 0 ? "+1" : "−1"} → {h.count}
+          </li>
+        ))
+      }
+    </ul>
+    <footer><a href="/readme/">About this app</a></footer>
+    <script src="/tally.js" defer></script>
+  </body>
+</html>
