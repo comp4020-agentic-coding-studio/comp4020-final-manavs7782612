@@ -1,5 +1,7 @@
 # How busy is the crit room?
 
+**Live:** https://comp4020-final-manavs7782612.fly.dev
+
 A single shared number. Anyone with the link can press **+** when someone
 walks into the COMP4020 crit room, or **−** when someone leaves. Everyone
 looking at the page watches that number change live, with no reload.
