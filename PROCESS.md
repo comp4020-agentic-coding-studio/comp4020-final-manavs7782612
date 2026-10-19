@@ -62,3 +62,32 @@ same build inside the real Docker image, including a container restart
 against a mounted volume to check persistence; `pnpm check` (typecheck plus
 `spec/tally.test.ts` and the supplied `spec/invariants.test.ts`) against
 the running built app; `pnpm check:evidence` against this file.
+
+## Crit 10: telling people apart
+
+Crit 10 asks for genuine multi-user behaviour: the server, not the client,
+has to tell two people apart and enforce what each may change. That's a
+different shape of problem than crit 9's "don't let two presses race," so
+rather than patch the anonymous `+1`/`-1` tally, the shared state changed
+from a counter to presence: `src/lib/identity.ts`'s `getOrSetUserId` mints
+a random httpOnly cookie on first visit, `src/lib/db.ts` stores one
+present/absent row per identity, and the shared count is now
+`COUNT(*) WHERE present = 1` rather than a value anyone writes directly.
+`POST /api/presence` (replacing `POST /api/tally`) only ever reads `userId`
+from that cookie, never from the request body, so there's no field a
+client could use to name someone else's identity — the permission decision,
+written up in
+[`decisions/0002-presence-identity-cookie.md`](decisions/0002-presence-identity-cookie.md).
+Every change is logged server-side to stdout with the visitor's short id
+(`src/lib/log.ts`), so a crit can be narrated from `flyctl logs` alone,
+and that log is what persists past the session, not just the final count.
+
+`spec/presence.test.ts` drives two independent cookie jars against the
+running app and checks the thing that actually matters: one jar toggling
+its own presence never moves the other's, and the shared count reflects
+both — replacing `spec/tally.test.ts`, which checked the now-retired delta
+endpoint. Verified the same way as before: built the Docker image, curled
+`/api/presence` from two separate cookie jars by hand, watched the `flyctl
+logs`-shaped stdout lines land for each, and restarted the container
+against a mounted volume to confirm presence (not just the count) survives
+a redeploy, before calling `pnpm check` green against the built app.

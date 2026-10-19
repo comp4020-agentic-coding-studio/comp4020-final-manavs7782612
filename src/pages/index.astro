@@ -1,8 +1,14 @@
 ---
-import { getCount, getHistory } from "../lib/db";
+import { getCount, getHistory, getPresence } from "../lib/db";
+import { getOrSetUserId, shortId } from "../lib/identity";
 
+export const prerender = false;
+
+const userId = getOrSetUserId(Astro.cookies, Astro.url.protocol === "https:");
 const count = getCount();
+const here = getPresence(userId);
 const history = getHistory(20);
+const me = shortId(userId);
 ---
 
 <!doctype html>
@@ -85,20 +91,29 @@ const history = getHistory(20);
       #count.pulse {
         transform: scale(1.08);
       }
+      .me {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        margin: 0;
+      }
+      .me code {
+        background: rgba(118, 118, 128, 0.12);
+        padding: 0.1em 0.4em;
+        border-radius: 6px;
+      }
       .buttons {
         display: flex;
         justify-content: center;
-        gap: 1.25rem;
         margin: 1.75rem 0 0.25rem;
       }
       button {
-        font-size: 1.75rem;
-        width: 4.25rem;
-        height: 4.25rem;
-        border-radius: 50%;
+        font-size: 1.05rem;
+        font-weight: 590;
+        padding: 0.9rem 2rem;
+        border-radius: 999px;
         border: none;
-        background: rgba(118, 118, 128, 0.12);
-        color: var(--text);
+        background: var(--accent);
+        color: #fff;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -109,21 +124,18 @@ const history = getHistory(20);
           filter 0.2s ease;
       }
       button:hover {
-        background: rgba(118, 118, 128, 0.18);
+        filter: brightness(1.08);
       }
       button:active {
-        transform: scale(0.9);
+        transform: scale(0.95);
       }
       button:disabled {
         opacity: 0.5;
         cursor: default;
       }
-      #plus {
-        background: var(--accent);
-        color: #fff;
-      }
-      #plus:hover {
-        filter: brightness(1.08);
+      button[data-here="1"] {
+        background: rgba(118, 118, 128, 0.12);
+        color: var(--text);
       }
       #status {
         min-height: 1.2em;
@@ -180,9 +192,14 @@ const history = getHistory(20);
     <main class="card">
       <h1>People in the COMP4020 crit room right now</h1>
       <div id="count">{count}</div>
+      <p class="me">
+        You're <strong id="my-status">{here ? "here" : "not here"}</strong> ·
+        <code>{me}</code>
+      </p>
       <div class="buttons">
-        <button type="button" id="minus" aria-label="One person just left">−</button>
-        <button type="button" id="plus" aria-label="One person just arrived">+</button>
+        <button type="button" id="toggle" data-here={here ? "1" : "0"}>
+          {here ? "I'm leaving" : "I'm here"}
+        </button>
       </div>
       <p id="status" role="status" aria-live="polite"></p>
       {
@@ -197,7 +214,7 @@ const history = getHistory(20);
                 <li>
                   <span>{new Date(h.at).toLocaleTimeString("en-AU")}</span>
                   <span class="delta">
-                    {h.delta > 0 ? "+1" : "−1"} → {h.count}
+                    <code>{shortId(h.userId)}</code> {h.action} → {h.count}
                   </span>
                 </li>
               ))}

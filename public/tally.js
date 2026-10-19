@@ -1,18 +1,19 @@
 // Real-time client: an EventSource keeps the big number in sync with every
-// other open tab, with no reload. The +/- buttons never read or send the
-// count themselves — only a direction — so this tab can't stomp on a change
-// another tab just made (decisions/0001-apply-deltas-not-counts.md).
+// other open tab, with no reload. The toggle button never reads or sends the
+// count itself --- only "I'm here" / "I'm leaving" for the identity the
+// server's own cookie already knows, so this tab can only ever change its
+// own presence (decisions/0002-presence-identity-cookie.md).
 const countEl = document.getElementById("count");
 const statusEl = document.getElementById("status");
-const minusBtn = document.getElementById("minus");
-const plusBtn = document.getElementById("plus");
+const toggleBtn = document.getElementById("toggle");
+const myStatusEl = document.getElementById("my-status");
 
 function setStatus(text) {
   statusEl.textContent = text;
 }
 
 function connect() {
-  const source = new EventSource("/api/tally/stream");
+  const source = new EventSource("/api/presence/stream");
   source.addEventListener("count", (event) => {
     if (countEl.textContent === event.data) return;
     countEl.textContent = event.data;
@@ -33,25 +34,32 @@ function connect() {
 
 connect();
 
-async function send(delta) {
-  minusBtn.disabled = true;
-  plusBtn.disabled = true;
+function render(here) {
+  toggleBtn.dataset.here = here ? "1" : "0";
+  toggleBtn.textContent = here ? "I'm leaving" : "I'm here";
+  myStatusEl.textContent = here ? "here" : "not here";
+}
+
+async function toggle() {
+  const here = toggleBtn.dataset.here === "1";
+  toggleBtn.disabled = true;
   try {
-    const res = await fetch("/api/tally", {
+    const res = await fetch("/api/presence", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ delta }),
+      body: JSON.stringify({ present: !here }),
     });
     if (!res.ok) {
       setStatus("that didn't go through — try again");
+      return;
     }
+    const data = await res.json();
+    render(data.present);
   } catch {
     setStatus("offline — try again");
   } finally {
-    minusBtn.disabled = false;
-    plusBtn.disabled = false;
+    toggleBtn.disabled = false;
   }
 }
 
-minusBtn.addEventListener("click", () => send(-1));
-plusBtn.addEventListener("click", () => send(1));
+toggleBtn.addEventListener("click", toggle);
