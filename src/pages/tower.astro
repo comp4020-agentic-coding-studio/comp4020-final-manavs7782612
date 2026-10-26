@@ -1,0 +1,88 @@
+---
+import { AIRPORT_INFO, PHRASES, SECTOR, VIEW_RADIUS_KM } from "../lib/airports";
+import { getOrSetUserId } from "../lib/identity";
+
+export const prerender = false;
+
+// A page render is the only place an identity cookie is minted.
+getOrSetUserId(Astro.cookies, Astro.url.protocol === "https:");
+const world = JSON.stringify({
+  sector: SECTOR,
+  airports: AIRPORT_INFO,
+  view: VIEW_RADIUS_KM,
+  phrases: PHRASES,
+});
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Canberra Sector: tower</title>
+    <link rel="stylesheet" href="/atc.css" />
+  </head>
+  <body>
+    <main>
+      <header class="bar">
+        <h1>Canberra Sector: tower</h1>
+        <nav>
+          <span id="conn" class="dim" role="status">CONNECTING</span>
+          <a href="/">Pilot</a>
+          <a href="/readme/">About</a>
+        </nav>
+      </header>
+
+      <noscript><p class="alert">This app needs JavaScript: the sky is live.</p></noscript>
+
+      <p class="dim">
+        The tower is open to anyone. You can clear and advise any plane except your own.
+      </p>
+
+      <div class="grid">
+        <section class="panel">
+          <h2>Requests</h2>
+          <div id="requests"></div>
+          <p class="dim" id="no-requests">No requests waiting.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Conflicts</h2>
+          <div id="conflicts" class="dim">none</div>
+        </section>
+
+        <section class="panel">
+          <h2>Runways</h2>
+          <div id="runways"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Readout</h2>
+          <div id="metrics" class="dim"></div>
+        </section>
+      </div>
+
+      <p id="msg" role="status" aria-live="polite"></p>
+
+      <section class="panel">
+        <h2>Flight strips</h2>
+        <div id="board"></div>
+        <p class="dim" id="no-planes">No planes yet.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Scope</h2>
+        <svg id="scope"></svg>
+      </section>
+
+      <section class="panel">
+        <h2>Recent events</h2>
+        <div id="events" class="dim"></div>
+      </section>
+    </main>
+
+    <script type="application/json" id="world" is:inline set:html={world} />
+    <script src="/scope.js" is:inline></script>
+    <script src="/tower.js" is:inline></script>
+  </body>
+</html>

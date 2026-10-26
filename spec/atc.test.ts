@@ -207,12 +207,21 @@ it("rejects malformed, non-JSON and over-broad bodies before touching state", as
   });
   expect(notJson.status).toBe(400);
 
-  const wrongType = await jar.fetch("/api/pilot/join", {
+  // Astro's own origin check refuses form-type bodies (text/plain among them)
+  // with a 403 before our route runs; any other non-JSON type reaches our 415.
+  const formType = await jar.fetch("/api/pilot/join", {
     method: "POST",
     headers: { "content-type": "text/plain" },
     body: JSON.stringify({ airport: "BEL" }),
   });
-  expect(wrongType.status).toBe(415);
+  expect(formType.status).toBe(403);
+
+  const otherType = await jar.fetch("/api/pilot/join", {
+    method: "POST",
+    headers: { "content-type": "application/octet-stream" },
+    body: JSON.stringify({ airport: "BEL" }),
+  });
+  expect(otherType.status).toBe(415);
 
   expect((await jar.post("/api/pilot/join", {})).status).toBe(400);
   expect((await jar.post("/api/pilot/join", { airport: "XYZ" })).status).toBe(400);

@@ -1,0 +1,209 @@
+/* Phosphor theme. Colour comes only from these tokens. Amber means "needs
+   action" and is always paired with a text label, never colour alone. */
+:root {
+  color-scheme: dark;
+  --bg: #020a04;
+  --panel: #04140a;
+  --phosphor: #4dff7c;
+  --dim: #2fb356;
+  --faint: #14502a;
+  --line: #0e3a1d;
+  --amber: #ffb000;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 1rem;
+  background: var(--bg);
+  color: var(--phosphor);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+main {
+  max-width: 980px;
+  margin: 0 auto;
+}
+header.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--dim);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+h2 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: normal;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+a {
+  color: var(--phosphor);
+}
+nav a {
+  margin-left: 1rem;
+}
+.dim {
+  color: var(--dim);
+}
+.alert {
+  color: var(--amber);
+  font-weight: bold;
+}
+.grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+}
+.panel {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 0.75rem;
+}
+.panel[hidden] {
+  display: none;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  align-items: center;
+  padding: 0.3rem 0;
+  border-bottom: 1px dashed var(--line);
+}
+.row:last-child {
+  border-bottom: none;
+}
+.row .grow {
+  flex: 1 1 8rem;
+}
+.strip {
+  font-size: 1.05rem;
+}
+.keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+button,
+select {
+  font: inherit;
+  color: var(--phosphor);
+  background: transparent;
+  border: 1px solid var(--dim);
+  border-radius: 0;
+  padding: 0.5rem 0.8rem;
+  min-height: 44px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+select {
+  background: var(--bg);
+}
+button {
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: var(--faint);
+}
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+button.small {
+  min-height: 32px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+}
+button.go {
+  border-color: var(--phosphor);
+}
+:focus-visible {
+  outline: 2px solid var(--phosphor);
+  outline-offset: 2px;
+}
+#msg {
+  min-height: 1.4em;
+  margin: 0.5rem 0 0;
+}
+svg.scope {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  background: var(--bg);
+  border: 1px solid var(--dim);
+}
+svg.scope text {
+  font-family: inherit;
+  fill: var(--dim);
+  font-size: 0.85px;
+}
+svg.scope .sector {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+svg.scope .ring {
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  vector-effect: non-scaling-stroke;
+}
+svg.scope .airport {
+  fill: none;
+  stroke: var(--dim);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+svg.scope .blip {
+  fill: var(--dim);
+}
+svg.scope .blip.me {
+  fill: var(--phosphor);
+}
+svg.scope .heading {
+  stroke: var(--dim);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+svg.scope .tag {
+  fill: var(--dim);
+}
+svg.scope .tag.me {
+  fill: var(--phosphor);
+}
+svg.scope .conflict {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+svg.scope .conflict-tag {
+  fill: var(--amber);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pending {
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.55;
+    }
+  }
+}
