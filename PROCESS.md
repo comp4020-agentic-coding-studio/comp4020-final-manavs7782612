@@ -1,93 +1,112 @@
 # Process overview
 
+## The pivot, and why
+
+Crits 9 and 10 produced a working crit-room headcount, graded as such. For the
+final project I replaced it with Canberra Sector: a text-first air traffic game
+with an airport in Belconnen, Woden, Gungahlin and Majura, pilots who steer
+live, and an open tower that clears takeoffs and landings. The reason was a
+test I could apply to my own idea: could someone act correctly without seeing a
+change within a second? In the headcount, mostly yes. In a sky where planes
+move, no. Real-time had to be necessary, not decorative.
+
+That came from pushing on the design in two rounds. First I asked what makes
+real-time necessary rather than an afterthought, and gave the example of not
+being able to take a route because it is in use; the agent turned that into
+corridors and runways as contested resources. Then, reviewing the written plan,
+I judged even that too thin, since a pilot only needs a corridor to be free at
+the moment of asking, and asked for live steering instead. I chose that knowing
+it adds a tick loop, continuous state and a bigger attack surface. The agent also made two wrong claims early on and caught both
+itself when it came to write the plan: it described a successful guarded UPDATE
+as changing zero rows (it is one), and proposed holds that expire on a timer,
+which would change state with no broadcast and contradict the real-time
+requirement. I only learned of them because it said so; had it not, the plan
+would have carried both errors into the code.
+
+## Where I steered, and where I didn't
+
+My calls were about scope and what counts as necessary: Canberra only, four
+airports, mostly text with a green-and-dots radar, the tower open to anyone, and
+real-time that has to matter. I also asked for logic simple enough not to open
+vulnerabilities, which is why occupancy is derived rather than stored and every
+write is one guarded statement. The agent proposed the mechanics (the tick,
+intents-only steering, the caps). I didn't write the SQL, so I leaned on the
+spec and the mutation check below to know it does what the README claims.
+
 ## Stack
 
-Astro in SSR mode, via the `@astrojs/node` standalone adapter
-([`1df5972`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/1df5972)).
-The published crit specs already assume Astro, and a single standalone
-process matters here: the app's one architectural decision (below) depends
-on exactly one process holding the count, not a pool of workers that could
-race each other. Storage is `node:sqlite`'s `DatabaseSync` — stable,
-unflagged, no native compile step, and a flat file is the right amount of
-database for one integer and a change log.
+Astro SSR with the Node standalone adapter, `node:sqlite`, server-sent events
+for push, plain POSTs for commands. One process matters: the 4 Hz simulation
+tick and every request handler share one SQLite handle and cannot interleave
+inside a transaction. SQLite is the only state, so a restart loses at most one
+tick. The reasoning, with rejected options (client-reported positions, discrete
+commands, an in-memory sim with checkpoints), is in
+[`decisions/0003-server-authoritative-steering.md`](decisions/0003-server-authoritative-steering.md)
+([`5243eb0`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/5243eb0)).
 
-## The feature
+## Defining "good" first, then the harness
 
-[`053a7e6`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/053a7e6):
-`db.ts` owns reads/writes against sqlite, `broadcast.ts` holds the open SSE
-connections, two API routes (`POST /api/tally`, `GET /api/tally/stream`),
-one SSR page wiring a `+`/`−` UI to both.
+Before any code, the README's definition of good and twelve CLAUDE.md rules
+were committed
+([`b432711`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/b432711)):
+clients never send positions, the tower's ownership check lives inside the SQL
+WHERE clause, every write goes through one `tx()`, nothing but the tick and a
+logged hold rule changes state unprompted, and a real `docker restart` is
+required before calling persistence done. The README also lists what the app
+deliberately doesn't do, including that the tower and its stream are public and
+the 5 km view is a game rule, not security.
 
-Crit 9 asks every final project to decide and defend how the app behaves
-when more than one person acts on shared state at once — here, two people
-pressing `+`/`−` close enough together to overlap. The server applies a
-*delta* against its own last-written count, in one synchronous operation,
-rather than ever trusting a client's idea of the current count, so neither
-press can silently overwrite the other. Written up with the rejected
-options in
-[`decisions/0001-apply-deltas-not-counts.md`](decisions/0001-apply-deltas-not-counts.md);
-`spec/tally.test.ts` fires two overlapping `+1` requests and asserts the
-count moves by exactly 2. That test was written alongside `applyDelta`
-rather than strictly before it, under real time pressure — but I confirmed
-it actually fails if the delta-not-count decision is reverted, which is the
-property it's meant to cover.
+## Reviewing the design before building it
 
-## Defining "good," then holding the build to it
+I had a separate agent attack the plan twice, because an agent that designed
+something is poor at breaking it. The first pass (corridor design) found that a
+throw between BEGIN and COMMIT would wedge the shared connection for everyone,
+that callsigns would run out, and that tests would block each other. The second
+pass (steering) found the one that mattered most: after a Fly auto-stop, every
+owner looks absent, so an abandonment rule that deletes planes would empty the
+sky overnight and fail the next-day persistence check. Abandonment became
+hold-only, measured against uptime. It also showed per-cookie limits protect
+nothing because cookies are free, so I added global plane, per-network and
+stream caps. The second review first died on a network error and returned
+nothing; I re-ran it rather than assume it had passed.
 
-`README.md`'s definition of good — one number, no accounts, forgiving of
-simultaneity, never negative, survives a restart — came before the
-Dockerfile or any other documentation, and `CLAUDE.md`'s rules are written
-directly off that definition
-([`cf7a850`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/cf7a850)).
-The same commit replaces the starter's busybox placeholder Dockerfile with
-a real multi-stage Node build, verified by actually running it: built the
-image locally, ran it against a mounted volume standing in for Fly's
-`/data`, restarted the container, and confirmed the count survived before
-calling it done.
+## Spec before code
 
-## Direction
-
-Scoped the app myself — a one-number headcount for my own pod's crit room,
-not a generic chat app, deliberately avoiding the median "multi-user
-real-time" answer the brief warns about — chose the stack myself, and
-worked through app → ADR → Dockerfile → docs in that order, so each later
-artifact describes something already built and tested rather than
-aspirational.
+The spec was committed before the implementation
+([`0f6c712`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/0f6c712)),
+then the server
+([`c79ea55`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/c79ea55)),
+then the pages
+([`cc18dbd`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/cc18dbd),
+[`1cf343d`](https://github.com/comp4020-agentic-coding-studio/comp4020-final-manavs7782612/commit/1cf343d)).
+It drives separate cookie jars against the running app and checks: steering
+moves only your own plane, the tower gets 403 on its own plane, two racing
+landing clearances at one runway yield exactly one 200, a conflict reaches both
+pilots and the tower, a pilot stream omits planes beyond 5 km, and a steer
+reaches a second stream in under a second. Tests assert only on their own
+planes and clean up after themselves, because the sky is shared.
 
 ## Verifying it actually works
 
-`pnpm build` then `node dist/server/entry.mjs` locally, curling `/`,
-`/readme/`, `POST /api/tally`, and `GET /api/tally/stream` by hand; the
-same build inside the real Docker image, including a container restart
-against a mounted volume to check persistence; `pnpm check` (typecheck plus
-`spec/tally.test.ts` and the supplied `spec/invariants.test.ts`) against
-the running built app; `pnpm check:evidence` against this file.
+`pnpm check` passes 17 tests against the built app. One failure was a wrong
+assumption in my spec, not the app: Astro's own origin check answers form-type
+bodies with 403 before my route's 415, so the spec now pins both.
 
-## Crit 10: telling people apart
+To check the spec can fail, I temporarily removed the `owner != ?` condition
+from the tower UPDATEs, rebuilt, and confirmed the ownership test failed with
+"expected 200 to be 403". I restored the file and confirmed a clean diff.
 
-Crit 10 asks for genuine multi-user behaviour: the server, not the client,
-has to tell two people apart and enforce what each may change. That's a
-different shape of problem than crit 9's "don't let two presses race," so
-rather than patch the anonymous `+1`/`-1` tally, the shared state changed
-from a counter to presence: `src/lib/identity.ts`'s `getOrSetUserId` mints
-a random httpOnly cookie on first visit, `src/lib/db.ts` stores one
-present/absent row per identity, and the shared count is now
-`COUNT(*) WHERE present = 1` rather than a value anyone writes directly.
-`POST /api/presence` (replacing `POST /api/tally`) only ever reads `userId`
-from that cookie, never from the request body, so there's no field a
-client could use to name someone else's identity — the permission decision,
-written up in
-[`decisions/0002-presence-identity-cookie.md`](decisions/0002-presence-identity-cookie.md).
-Every change is logged server-side to stdout with the visitor's short id
-(`src/lib/log.ts`), so a crit can be narrated from `flyctl logs` alone,
-and that log is what persists past the session, not just the final count.
+For persistence I built the Docker image, ran it against a mounted volume,
+flew two planes with different headings and speeds, ran `docker restart`, and
+compared the first snapshot after boot with the state before: both planes
+matched, with status, heading and speed identical and 0.000 km moved. I also
+screenshotted the tower, pilot and About pages at 390 px and 1100 px wide:
+no horizontal overflow, and amber appears only on pending requests and
+conflicts, always with a text label.
 
-`spec/presence.test.ts` drives two independent cookie jars against the
-running app and checks the thing that actually matters: one jar toggling
-its own presence never moves the other's, and the shared count reflects
-both — replacing `spec/tally.test.ts`, which checked the now-retired delta
-endpoint. Verified the same way as before: built the Docker image, curled
-`/api/presence` from two separate cookie jars by hand, watched the `flyctl
-logs`-shaped stdout lines land for each, and restarted the container
-against a mounted volume to confirm presence (not just the count) survives
-a redeploy, before calling `pnpm check` green against the built app.
+## What isn't proven yet
+
+Steer-to-seen measured 1 ms, but on localhost, not across Fly. Nothing is
+merged or deployed yet. I haven't done the two-browser-profile pass or the
+next-day check on the live URL. The one-minute hold rule is a documented manual
+check, not an automated test. Until those are done I don't claim them.
