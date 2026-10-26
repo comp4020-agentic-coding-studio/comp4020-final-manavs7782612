@@ -14,8 +14,8 @@ That came from pushing on the design in two rounds. First I asked what makes
 real-time necessary rather than an afterthought, and gave the example of not
 being able to take a route because it is in use; the agent turned that into
 corridors and runways as contested resources. Then, reviewing the written plan,
-I judged even that too thin, since a pilot only needs a corridor to be free at
-the moment of asking, and asked for live steering instead. I chose that knowing
+I commented that real-time needed to be more apparent, and asked whether live
+steering of the plane would make the system justifiable. I chose it knowing
 it adds a tick loop, continuous state and a bigger attack surface. The agent also made two wrong claims early on and caught both
 itself when it came to write the plan: it described a successful guarded UPDATE
 as changing zero rows (it is one), and proposed holds that expire on a timer,
