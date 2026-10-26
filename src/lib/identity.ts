@@ -1,15 +1,15 @@
 import type { AstroCookies } from "astro";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 const COOKIE = "uid";
+const SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-// Crit 10's whole permission story rests on this: the server decides who's
-// acting from an httpOnly cookie it issued, never from anything a request
-// body claims. A fresh visitor gets one on their very first request — no
-// login, no setup, just the URL — and keeps it for as long as the cookie
-// lives.
+// Only page renders (`/` and `/tower`) call this. A fresh visitor gets an
+// httpOnly cookie on their very first request: no login, no setup, just the
+// URL. API routes and the live stream never mint one (see readUserId), so a
+// first visit can't create two identities at once.
 export function getOrSetUserId(cookies: AstroCookies, secure: boolean): string {
-  const existing = cookies.get(COOKIE)?.value;
+  const existing = readUserId(cookies);
   if (existing) return existing;
 
   const id = randomUUID();
@@ -23,8 +23,15 @@ export function getOrSetUserId(cookies: AstroCookies, secure: boolean): string {
   return id;
 }
 
-// What a log line or the page shows instead of the full UUID — enough to
-// tell two visitors apart, not enough to look like a real identity.
-export function shortId(userId: string): string {
-  return userId.slice(0, 8);
+// What every API route and the stream use: the cookie or nothing. A value that
+// isn't shaped like one we issued is treated as no identity at all.
+export function readUserId(cookies: AstroCookies): string | null {
+  const value = cookies.get(COOKIE)?.value;
+  return value && SHAPE.test(value) ? value : null;
+}
+
+// What a log line or the tower shows instead of the secret cookie. A hash,
+// not a prefix: the first characters of the cookie are part of the secret.
+export function publicId(userId: string): string {
+  return createHash("sha256").update(userId).digest("hex").slice(0, 8);
 }
