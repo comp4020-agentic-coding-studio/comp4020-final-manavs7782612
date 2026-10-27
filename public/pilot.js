@@ -57,6 +57,37 @@
     }
   });
 
+  // Game-style steering: WASD held keys are sampled on an interval close to
+  // the 250 ms sim tick, so at most one steer request goes out per tick no
+  // matter how many keys are held or how long. A/D turn, W/S change speed.
+  const STEER_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD"]);
+  const held = new Set();
+  const typing = (target) => target.closest("input, select, textarea, button");
+
+  window.addEventListener("keydown", (event) => {
+    if (!STEER_KEYS.has(event.code)) return;
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+    if (typing(event.target)) return;
+    held.add(event.code);
+  });
+  window.addEventListener("keyup", (event) => {
+    held.delete(event.code);
+  });
+  window.addEventListener("blur", () => held.clear());
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) held.clear();
+  });
+
+  setInterval(() => {
+    if (held.size === 0) return;
+    const me = snap && snap.me;
+    if (!me || !FLYING.includes(me.status)) return;
+    const body = {};
+    if (held.has("KeyA") !== held.has("KeyD")) body.turn = held.has("KeyA") ? -1 : 1;
+    if (held.has("KeyW") !== held.has("KeyS")) body.speed = held.has("KeyW") ? 1 : -1;
+    if (body.turn !== undefined || body.speed !== undefined) act("/api/pilot/steer", body);
+  }, 200);
+
   function describe(me) {
     const held = me.held ? " (ON HOLD: you were away)" : "";
     switch (me.status) {
@@ -105,6 +136,7 @@
       $("btn-takeoff").disabled = me.status !== "PARKED";
       $("btn-landing").disabled = me.status !== "AIRBORNE";
       $("land-at").disabled = me.status !== "AIRBORNE";
+      $("wasd-hint").hidden = !flying;
     }
 
     const others = me ? snap.planes.filter((p) => p.id !== me.id) : [];

@@ -15,15 +15,25 @@
   // world: { sector, airports }; opts.rangeKm draws a visibility ring round "me"
   function create(svg, world, opts = {}) {
     const { sector, airports } = world;
-    svg.setAttribute(
-      "viewBox",
-      `${sector.minX} ${-sector.maxY} ${sector.maxX - sector.minX} ${sector.maxY - sector.minY}`,
-    );
+    const cx = (sector.minX + sector.maxX) / 2;
+    const cy = (sector.minY + sector.maxY) / 2;
+    const r = Math.hypot((sector.maxX - sector.minX) / 2, (sector.maxY - sector.minY) / 2) * 1.05;
+    svg.setAttribute("viewBox", `${cx - r} ${-(cy + r)} ${r * 2} ${r * 2}`);
     svg.setAttribute("class", "scope");
     svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Radar scope of the Canberra sector. The same information is listed as text.");
+    svg.setAttribute("aria-label", "Circular radar scope of the Canberra sector. The same information is listed as text.");
 
-    svg.append(
+    const clipId = `scope-clip-${Math.random().toString(36).slice(2)}`;
+    const clipPath = el("clipPath", { id: clipId });
+    clipPath.append(el("circle", { cx, cy: -cy, r }));
+    const defs = el("defs", {});
+    defs.append(clipPath);
+    svg.append(defs);
+
+    const face = el("g", { "clip-path": `url(#${clipId})` });
+    svg.append(face);
+
+    face.append(
       el("rect", {
         class: "sector",
         x: sector.minX,
@@ -32,15 +42,19 @@
         height: sector.maxY - sector.minY,
       }),
     );
+    // Decorative concentric sweep rings, purely cosmetic.
+    for (const frac of [0.33, 0.66, 1]) {
+      face.append(el("circle", { class: "sweep-ring", cx, cy: -cy, r: r * frac }));
+    }
     for (const code in airports) {
       const a = airports[code];
-      svg.append(
+      face.append(
         el("rect", { class: "airport", x: a.x - 0.35, y: -a.y - 0.35, width: 0.7, height: 0.7 }),
         el("text", { x: a.x + 0.6, y: -a.y + 0.3 }, code),
       );
     }
     const live = el("g", {});
-    svg.append(live);
+    face.append(live);
 
     let snap = null;
     let receivedAt = 0;
@@ -72,16 +86,19 @@
         const pos = at.get(p.id);
         const mine = me && p.id === me.id;
         if (!FLYING.includes(p.status)) continue;
-        const rad = (p.heading * Math.PI) / 180;
+        const sx = pos.x;
+        const sy = -pos.y;
+        // A small triangle, nose up (north) before rotation; SVG rotate() is
+        // clockwise in this y-down coordinate space, matching compass heading.
+        const nose = `${sx} ${sy - 0.55}`;
+        const left = `${sx - 0.38} ${sy + 0.4}`;
+        const right = `${sx + 0.38} ${sy + 0.4}`;
         live.append(
-          el("line", {
-            class: "heading",
-            x1: pos.x,
-            y1: -pos.y,
-            x2: pos.x + Math.sin(rad) * 1.1,
-            y2: -(pos.y + Math.cos(rad) * 1.1),
+          el("path", {
+            class: mine ? "blip me" : "blip",
+            d: `M ${nose} L ${left} L ${right} Z`,
+            transform: `rotate(${p.heading} ${sx} ${sy})`,
           }),
-          el("circle", { class: mine ? "blip me" : "blip", cx: pos.x, cy: -pos.y, r: 0.32 }),
         );
         if (inConflict.has(p.id)) {
           live.append(el("circle", { class: "conflict", cx: pos.x, cy: -pos.y, r: 0.9 }));

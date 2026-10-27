@@ -83,7 +83,11 @@ const world = JSON.stringify({ sector: SECTOR, airports: AIRPORT_INFO, view: VIE
 
       <section class="panel">
         <h2>Scope</h2>
-        <svg id="scope"></svg>
+        <div class="radar-frame"><svg id="scope"></svg></div>
+        <p class="hint" id="wasd-hint" hidden>
+          Steer with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> &mdash;
+          <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>W</kbd>/<kbd>S</kbd> change speed.
+        </p>
       </section>
     </main>
 

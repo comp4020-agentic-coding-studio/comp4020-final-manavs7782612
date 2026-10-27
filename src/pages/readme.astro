@@ -21,22 +21,23 @@ const readmeHtml = marked.parse(readmeMarkdown);
     <link rel="stylesheet" href="/atc.css" />
     <style>
       article :global(h1) {
-        font-size: 1.1rem;
-        letter-spacing: 0.15em;
-        text-transform: uppercase;
+        font-size: 1.15rem;
+        font-weight: 700;
       }
       article :global(h2) {
         margin-top: 2rem;
         padding-top: 1rem;
-        border-top: 1px solid var(--line);
+        border-top: 1px solid var(--border);
         font-size: 0.8rem;
-        font-weight: normal;
-        letter-spacing: 0.15em;
+        font-weight: 600;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: var(--dim);
+        color: var(--text-dim);
       }
       article :global(code) {
-        background: var(--faint);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
         padding: 0.1em 0.35em;
       }
       article :global(li) {

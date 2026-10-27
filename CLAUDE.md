@@ -57,16 +57,26 @@ reinterpreting the brief.
    mounted volume, and confirm positions, headings, speeds and statuses
    survived. `DB_PATH` (`/data/atc.db`) is the whole persistence story; don't
    let it fall back to an in-memory default when the variable is unset.
-10. **The look is phosphor: calm green on black, monospace.** Colour comes
-    only from the `:root` tokens (`--bg`, `--phosphor`, `--dim`, `--amber`).
-    Amber means "needs action" (a pending request, a conflict) and is always
-    paired with a text label, never colour alone. Build the text (strips,
-    request queue, conflict list) before the scope. Any animation is off under
-    `prefers-reduced-motion`. Mobile-first at 375 px.
-11. **Don't grow past "a text-first sector for one room."** No altitude, fuel,
-    weather, crashes, chat, free-text radio or fifth airport. If a prompt asks
-    for one, point back to "What this deliberately doesn't do" in `README.md`
-    before building it.
+10. **Phosphor survives only on the scope; the rest of the app is a modern
+    SaaS theme.** The radar is the one place colour comes from the old
+    green-on-black tokens (`--bg`, `--phosphor`, `--dim`, `--amber`), scoped
+    inside `.radar-frame` so they never leak into the rest of the page. Every
+    other surface (strips, panels, nav, buttons) uses the `:root` SaaS tokens
+    (`--surface`, `--text`, `--accent`, `--warn`, ...) chosen for readability,
+    not retro effect. `--warn` still means "needs action" (a pending request,
+    a conflict) and is always paired with a text label, never colour alone.
+    Build the text (strips, request queue, conflict list) before the scope.
+    Any animation is off under `prefers-reduced-motion`. Mobile-first at
+    375 px.
+11. **The pilot's primary view is an interactive map you fly, not just read.**
+    A circular radar shows a plane icon pointed in its heading; the pilot
+    steers it with WASD (A/D turn, W/S change speed) sampled into the same
+    bounded `turn`/`speed` deltas the buttons already send — never a position.
+    The on-screen buttons stay as the accessible/touch fallback for the same
+    action. This still doesn't grow past "a text-first sector for one room"
+    everywhere else: no altitude, fuel, weather, crashes, chat, free-text
+    radio or fifth airport. If a prompt asks for one, point back to "What
+    this deliberately doesn't do" in `README.md` before building it.
 12. **`pnpm check` and `pnpm check:evidence` are the gate, not a suggestion.**
     Don't report a change as done without both passing locally against a built
     app (`pnpm build`, then run `dist/server/entry.mjs`, per
