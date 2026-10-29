@@ -1,0 +1,46 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Slotlock: dispatcher</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main>
+      <header class="bar">
+        <h1>Slotlock: dispatcher</h1>
+        <nav>
+          <span id="conn" class="dim" role="status">CONNECTING</span>
+          <a href="/dock/">Dock view</a>
+          <a href="/readme/">About</a>
+          <button type="button" id="logout">Log out</button>
+        </nav>
+      </header>
+
+      <noscript><p class="alert">This app needs JavaScript: slots update live.</p></noscript>
+
+      <p id="who" class="dim"></p>
+      <p id="msg" role="status" aria-live="polite"></p>
+
+      <div class="grid">
+        <section class="panel">
+          <h2>Board</h2>
+          <div id="board"></div>
+          <p class="dim" id="no-slots" hidden>No slots yet.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Audit log</h2>
+          <div id="events"></div>
+        </section>
+      </div>
+    </main>
+
+    <script src="/dispatcher.js" is:inline></script>
+  </body>
+</html>

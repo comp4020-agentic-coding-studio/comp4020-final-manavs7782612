@@ -1,0 +1,55 @@
+---
+export const prerender = false;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Slotlock</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main>
+      <header class="bar">
+        <h1>Slotlock</h1>
+        <nav>
+          <a href="/dock/">Dock view</a>
+          <a href="/readme/">About</a>
+        </nav>
+      </header>
+
+      <p class="dim">
+        Log in as a dispatcher to claim and manage slots, or as a driver to
+        see your own slot and the open slots you're compliant for. The
+        <a href="/dock/">dock view</a> needs no login.
+      </p>
+
+      <section class="panel" style="max-width:420px">
+        <h2>Log in</h2>
+        <form class="login" id="login-form">
+          <label>
+            Role
+            <select id="role" name="role">
+              <option value="dispatcher">Dispatcher</option>
+              <option value="driver">Driver</option>
+            </select>
+          </label>
+          <label>
+            Name
+            <input id="name" name="name" autocomplete="off" required />
+          </label>
+          <label>
+            PIN
+            <input id="pin" name="pin" inputmode="numeric" maxlength="4" autocomplete="off" required />
+          </label>
+          <button type="submit" class="go">Log in</button>
+        </form>
+        <p id="msg" role="status" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <script src="/login.js" is:inline></script>
+  </body>
+</html>
