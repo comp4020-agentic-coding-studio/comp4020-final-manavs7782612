@@ -1,87 +1,98 @@
-# Canberra Sector
+# Slotlock
 
 **Live:** https://comp4020-final-manavs7782612.fly.dev
 
-A tiny air traffic control game for Canberra. Four town centres each have an
-airport: Belconnen, Woden, Gungahlin and Majura. Open the link and the server
-hands your browser a random, anonymous identity (an httpOnly cookie, no
-sign-in). As a **pilot** you pick a start airport, get a callsign, ask for
-takeoff and fly your plane on a circular radar map, steering with WASD. As the
-**tower** (`/tower`) you clear takeoffs and landings and watch the whole sky.
-Planes move continuously, so what you see a second ago is already wrong.
+Slotlock is a dock and load-slot booking tool for small Australian transport
+operators. It exists because of one fact: from August 2026, Heavy Vehicle
+National Law reforms make a documented Safety Management System a legal duty
+for every party in the Chain of Responsibility — not just large fleets with
+enterprise TMS budgets. A missed fatigue breach isn't a UX bug here; it's a
+Category 1 offence carrying penalties up to $436,850 and five years'
+imprisonment for an individual, or over $4.2M for a corporation.
+
+Existing software doesn't close this gap. Dock schedulers like GoRamp and
+Opendock solve detention fees for US warehouses and have no concept of
+Australian driver-hours law. Enterprise suites like Kynection or Allotrac
+bury compliance as one module in a system priced for large fleets. Tools
+built for small AU carriers — MachShip, MyTrucking — are on record as lacking
+deep Chain of Responsibility functionality. Nobody stops a non-compliant
+booking from happening. They all report on it afterward.
 
 ## What good means here
 
-This is for one small audience: a pod of roughly 4 to 12 people in the same room,
-playing for one afternoon. It is not a flight simulator and not a general
-"multi-user real-time" demo. The brief warns against the median answer to that
-prompt; the way out is to pick a use this small and mean it. Flight strips and
-a green phosphor scope are how real controllers worked, and a circular radar
-you fly with WASD, framed by a clean modern UI everywhere else, fits a room of
-people glancing at phones without feeling like a spreadsheet.
+**Good, for this app, means one thing above all others: a slot that would
+breach a driver's legal hours cannot be booked — not "should not," not
+"is flagged," but cannot.** Everything else in this document, `CLAUDE.md`,
+and `spec/` exists to make that true in practice, not just in prose.
 
-Given that audience, good means:
+What's enforced (the app will refuse to let this happen, and a spec check
+proves it):
 
-- **You can see who is near you, live, in time to avoid them.** Planes move
-  continuously, so a stale picture is a wrong picture. A conflict (two planes
-  closer than 1.0 km) shows on both pilots' screens and the tower within about
-  a second. Your scope shows planes within 5 km of you.
-- **The tower is necessary.** No plane takes off or lands without a clearance,
-  and one runway serves one plane at a time. Two clearances racing for the same
-  runway never both succeed.
-- **Only you can fly your plane.** No request can steer a plane its own cookie
-  doesn't own, and clients never send positions: WASD and the on-screen buttons
-  both just send "turn" and "speed up", and the server decides where the plane
-  is.
-- **The sky survives a restart.** A redeploy, a crash or Fly stopping the machine
-  overnight brings every plane back where it was, heading and speed intact.
-- **Legible as text, flyable as a map.** Flight strips, a request queue and a
-  conflict list carry the whole state in words. The circular radar is a glance
-  aid and the actual control surface for a pilot's plane, and the app stays
-  playable with it hidden.
-- **Logs who did what, durably.** Clearances, advisories, conflicts and denials
-  go to stdout (tailable with `flyctl logs`) and to an events table, so a session
-  can be narrated afterwards.
+- **A claim is rejected outright, synchronously, if the claimed driver's
+  remaining legal hours are insufficient** for the slot's duration plus
+  transit buffer. No override exists in the UI for this case, for any role.
+- **A slot cannot be claimed by two dispatchers at once**; the second claim
+  is rejected, not silently overwritten. The hours check and the
+  contention check both live inside the same guarded database statement,
+  so there is no gap between "check" and "write" for a race to land in.
+- **Every lock, completion and rejection is written to an append-only
+  log**, naming who did it. Nothing in the system can edit or delete a
+  past entry — not even an admin role.
 
-This take on "good" comes from two places in the
-[small web](https://ar.al/2020/08/07/what-is-the-small-web/) tradition this
-course keeps pointing at: games built for a handful of people in the same room,
-and tools built for one workshop or one event rather than the general public
-(disposable, single-purpose, no onboarding). The text-first strip board follows
-real practice, where controllers ran traffic on paper flight strips.
+What's judged (a human call this app supports but doesn't automate):
+
+- Whether a *reassignment* to another driver is the right business
+  decision versus rescheduling the load entirely — Slotlock surfaces a
+  ranked list of compliant drivers, but the dispatcher chooses.
+- Whether a dock's own appointment windows are generous enough for the
+  operator's actual yard — that's a judgment about the business, not a
+  safety rule, so it's configurable rather than enforced.
+
+The system distinguishes three parties by function, per the Chain of
+Responsibility's own definitions, not job title: the **dispatcher** who
+claims a slot, the **driver** who is bound by it, and the **consignor/
+consignee** who can see it fill live, anonymously, with no login. Real-time
+matters here specifically because the race condition — two dispatchers
+claiming the same door, a driver's hours ticking over mid-claim — is the
+exact moment a paper-based or asynchronous system fails regional operators
+today.
+
+Sources consulted: NHVR Chain of Responsibility primary-duty guidance,
+HVNL 2026 reform coverage (ctrack.com.au, fleetcard.com.au), industry
+analysis naming the MachShip/MyTrucking compliance gap (kynection.com.au).
 
 ## What this deliberately doesn't do
 
-- **No altitude, weather, fuel, crashes or real aviation physics.** Planes fly at
-  a constant heading and one of three speeds. Getting too close raises an
-  alert and a log line; nothing explodes.
-- **No accounts, no names, no chat, no free-text radio.** The cookie is a random
-  id. The tower sends one of a few fixed advisory phrases, never free text.
-- **No more than four airports**, all in Canberra.
-- **No security boundary around who sees what.** `/tower` and its live stream are
-  public on purpose. The 5 km pilot view and the rule that the tower cannot
-  clear its own plane are game rules for a friendly room, not access control: a
-  second browser is a second identity.
-- **No system deleting your plane.** If a pilot disconnects for a minute their
-  plane is put on hold, and it stays on hold until they return. It is never
-  removed by a timer.
-- **The sky pauses while the server sleeps.** Fly stops the machine when nobody
-  is connected, and planes don't fly while it is stopped. They resume where they
-  were.
-- **A plane waiting for landing clearance waits for a human.** If nobody opens
-  `/tower`, it keeps waiting.
+- **No real telematics or fatigue-monitoring integration.** A driver's
+  `hours_remaining` is a number this app tracks itself, decremented when a
+  slot completes. For a real operator this would read from a certified
+  logbook or ELD feed; here it's a deliberate simplification stated
+  plainly so it doesn't read as an overclaim.
+- **No multi-operator accounts, no signup.** A fixed, small roster of
+  dispatchers and drivers, each with a name and a 4-digit PIN, seeded in
+  source. This is a single-operator prototype, not a SaaS with tenants.
+- **No more than a handful of docks**, all fixed in source.
+- **No admin override, force-book, or "edit flag" of any kind.** If a
+  future feature seemed to need one, the answer is to stop and ask, not to
+  build it — it would contradict the one claim this app exists to make
+  true.
+- **No security boundary around the consumer/dock view.** `/dock` is
+  public on purpose, same as a real yard's status board, but it shows no
+  names and no PII — fill status only.
 
 ## How it's built
 
-Astro in SSR mode (`@astrojs/node`, standalone adapter), a `node:sqlite` file
-for all state, and one in-process simulation tick (4 times a second) that moves
-the airborne planes. Positions are written to the database on every tick, so
-persistence is exact to the last tick. State changes are pushed to every open
-tab over
+Astro in SSR mode (`@astrojs/node`, standalone adapter) and a `node:sqlite`
+file hold all state — slots, drivers, docks, sessions and the audit log.
+Dispatchers and drivers log in with name + PIN against a fixed seeded
+roster; the consumer dock view needs no identity at all. Every write that
+changes a slot's state goes through one transaction, with the compliance
+check and the contention check inside the same guarded `UPDATE` statement,
+so a race between two claims has exactly one winner and the loser is told
+why. State changes push to every open tab over
 [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events);
-steering (WASD or buttons) and clearances are plain POSTs. The UI is a modern
-SaaS theme everywhere except the radar, which keeps the original green
-phosphor-on-black look, drawn circular with a plane icon per flight. One
-Fly.io machine, one volume: see `fly.toml` and the `Dockerfile` for what that
-fixes. `CLAUDE.md` says what rules the build is held to; `PROCESS.md` says how
-it actually went; `decisions/` holds the reasoning behind the big calls.
+claims, reassignments, reschedules and completions are plain POSTs. One
+Fly.io machine, one volume: see `fly.toml` and the `Dockerfile` for what
+that fixes. `CLAUDE.md` says what rules the build is held to; `PROCESS.md`
+says how it actually went; `decisions/` holds the reasoning behind the
+big calls.

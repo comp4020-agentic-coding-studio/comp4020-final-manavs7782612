@@ -11,74 +11,105 @@ What the agent needs to carry from any of it is your call.
 
 ## Rules for this app
 
-These follow directly from what `README.md` says "good" means for Canberra
-Sector. If a change would break one of these, stop and ask rather than silently
+These follow directly from what `README.md` says "good" means for Slotlock.
+If a change would break one of these, stop and ask rather than silently
 reinterpreting the brief.
 
-1. **Identity comes only from the cookie, and only page renders mint it.**
-   `/` and `/tower` set the httpOnly `uid` cookie; API routes and the live
-   stream answer 401 without one, so a first visit can never create two
-   identities at once. Pilot endpoints never accept a plane id: the plane is
-   found from the cookie. The public id shown or logged is a hash of the
-   cookie (`sha256(uid).slice(0, 8)`), never a prefix of the secret itself.
-2. **Clients never send positions.** Only the simulation tick moves planes.
-   Steering is a bounded delta (turn left/right, speed up/down), clamped
-   server-side and rate-limited per cookie. Anything that looks like a client
-   telling the server where a plane is gets refused, not accommodated.
-3. **The tower can't act on its own plane, enforced in the SQL `WHERE`
-   clause.** `owner != me` lives inside the same statement as the state change,
-   never as a JavaScript check beforehand. This is a game rule, not security:
-   a second browser is a second identity, and the README says so.
-4. **Every write goes through `tx()`, and SQLite is the only state.** `tx` is
-   `BEGIN IMMEDIATE`, try/catch to `ROLLBACK`, no `await` inside, and it throws
-   on re-entry. Parse the request body before it, insert the event only when
-   `changes === 1`, and broadcast only after commit. No in-memory copy of the
-   planes outlives a tick. The database handle and the tick interval live on
-   `globalThis` so dev reloads can't create a second of either.
-5. **The only changes nobody asked for are the tick and the hold rule.** Both
-   are logged with actor `system`. A silent owner's plane goes on hold; the
-   system never deletes a plane. Abandonment is measured against uptime, and on
-   boot every owner's last-seen time is reset, so waking from a Fly auto-stop
-   can never look like everyone leaving.
-6. **All broadcasts go through `src/lib/broadcast.ts`.** Pilot streams are
-   filtered to 5 km server-side; the tower stream is unfiltered and public.
-   Drop a client whose stream stops draining, and cap total and per-cookie
-   streams, so one stalled or hostile tab can't grow memory.
-7. **Cap what a free cookie can create.** Cookies cost nothing to mint, so
-   per-cookie limits alone protect nothing: keep the global plane cap, the
-   per-IP join cap, and the stream caps. Write a conflict to `events` on its
-   rising edge only, and prune old events.
-8. **POST with `content-type: application/json` only.** Whitelist airport codes
-   and advisory phrases before they touch SQL. Render live state with
-   `textContent`, never `innerHTML`.
-9. **Persistence means a real restart test, not just "it's in a database."**
-   Before calling a change to the database, the tick or the Dockerfile done,
-   start planes flying, actually `docker restart` the container against a
-   mounted volume, and confirm positions, headings, speeds and statuses
-   survived. `DB_PATH` (`/data/atc.db`) is the whole persistence story; don't
-   let it fall back to an in-memory default when the variable is unset.
-10. **Phosphor survives only on the scope; the rest of the app is a modern
-    SaaS theme.** The radar is the one place colour comes from the old
-    green-on-black tokens (`--bg`, `--phosphor`, `--dim`, `--amber`), scoped
-    inside `.radar-frame` so they never leak into the rest of the page. Every
-    other surface (strips, panels, nav, buttons) uses the `:root` SaaS tokens
-    (`--surface`, `--text`, `--accent`, `--warn`, ...) chosen for readability,
-    not retro effect. `--warn` still means "needs action" (a pending request,
-    a conflict) and is always paired with a text label, never colour alone.
-    Build the text (strips, request queue, conflict list) before the scope.
-    Any animation is off under `prefers-reduced-motion`. Mobile-first at
-    375 px.
-11. **The pilot's primary view is an interactive map you fly, not just read.**
-    A circular radar shows a plane icon pointed in its heading; the pilot
-    steers it with WASD (A/D turn, W/S change speed) sampled into the same
-    bounded `turn`/`speed` deltas the buttons already send — never a position.
-    The on-screen buttons stay as the accessible/touch fallback for the same
-    action. This still doesn't grow past "a text-first sector for one room"
-    everywhere else: no altitude, fuel, weather, crashes, chat, free-text
-    radio or fifth airport. If a prompt asks for one, point back to "What
-    this deliberately doesn't do" in `README.md` before building it.
-12. **`pnpm check` and `pnpm check:evidence` are the gate, not a suggestion.**
-    Don't report a change as done without both passing locally against a built
-    app (`pnpm build`, then run `dist/server/entry.mjs`, per
-    `spec/global-setup.ts`). Specs assert only on their own planes, never on
-    global counts, and every plane a test creates leaves in `afterEach`.
+## Non-negotiable (never do this, ever, no exceptions)
+
+1. **A slot claim never succeeds if the driver's remaining hours are less
+   than the slot's duration plus its configured transit buffer.** This
+   check runs server-side, inside the same guarded `UPDATE` statement that
+   would lock the slot — never client-side only, never as a warning the
+   user can dismiss, never as a check followed by a separate write.
+2. **Two concurrent claims on the same slot never both succeed.** The
+   slot-open check and the driver's-hours check are both conditions inside
+   one `UPDATE ... WHERE ...` statement, guarded by `tx()`. That race —
+   check-then-write with a gap in between — is exactly what this app
+   exists to close, so an app-level "read, decide, then write" pattern is
+   never an acceptable shape for a mutator here.
+3. **No UI path (admin override, "force book," edit flag) ever lets a
+   non-compliant booking through.** If a future prompt seems to need one,
+   stop and raise it with the user before building it — it would
+   contradict the README's central claim.
+4. **An audit log entry is never edited or deleted, by any role, including
+   an admin.** Append-only means append-only in the schema and the
+   application code: no route, no helper, no migration path ever issues
+   `UPDATE` or `DELETE` against the `events` table. `/api/events` exports
+   `GET` only; there is no handler for any other method on that route.
+
+## Judged, not enforced — implement as a default, not a lock
+
+5. Which driver to suggest on reassignment is a ranked recommendation
+   (soonest compliant availability first). The dispatcher can pick any
+   compliant driver from the list, including one not ranked first.
+6. Dock appointment window length and the fixed dock/roster lists are
+   configuration in source, not something a UI role can edit live.
+
+## Identity and sessions
+
+7. **Dispatchers and drivers are real, attributable identities, logged in
+   with name + PIN against the seeded roster in `src/lib/roster.ts`** — not
+   anonymous cookies. No session is minted by a bare page render; login is
+   an explicit `POST /api/login`. The consumer dock view (`/dock`) needs no
+   identity at all and shows no names or PII, only fill status.
+8. Every mutating API route reads the actor from the session, never from a
+   request body field naming "who did this." A body that tries to claim a
+   slot on someone else's behalf is a structural rejection, not a trust
+   decision.
+
+## Persistence and writes
+
+9. **Every write goes through one `tx()` helper, and `node:sqlite` is the
+   only state.** `tx` is `BEGIN IMMEDIATE`, try/catch to `ROLLBACK`, no
+   `await` inside, and it throws on re-entry. Parse the request body before
+   calling it, insert the audit event only when the guarded statement's
+   `changes === 1`, and broadcast only after commit. The database handle
+   lives on `globalThis` so a dev reload can't create a second one.
+10. **Persistence means a real restart test, not just "it's in a
+    database."** Before calling a change to the schema or a mutator done,
+    actually `docker restart` the container against a mounted volume and
+    confirm every slot's status, lock owner and the full audit history
+    survived exactly. `DB_PATH` is the whole persistence story; don't let
+    it fall back to an in-memory default when the variable is unset.
+
+## Real-time and transport
+
+11. **SSE for push, plain POST for commands** — not WebSockets. All
+    broadcasts go through one `broadcast.ts`, filtered per role
+    (`dispatcher` gets the full board and audit feed; `driver` gets their
+    own slot plus the open slots they're compliant for; `consumer` gets
+    dock fill status only). A client whose stream stops draining is
+    dropped, and total/per-session stream counts are capped.
+
+## Input handling and rendering
+
+12. **POST with `content-type: application/json` only, strict body
+    parsing.** An unknown key in a request body is a 400, not something
+    quietly ignored. Render live state with `textContent`, never
+    `innerHTML`.
+
+## Styling
+
+13. **A safety/compliance amber accent, text-first layout, mobile-first at
+    375px.** There is no map or radar in this app; the board, slot cards
+    and audit log carry the whole state in words. `--warn` means "needs
+    action" (a pending claim conflict, a rejection) and is always paired
+    with a text label, never colour alone. Any animation is off under
+    `prefers-reduced-motion`.
+
+## When a correction happens
+
+14. If a mistake in the hours-calculation logic or claim-locking is caught
+    and fixed, the fix must land as a new `spec/` check (regression test)
+    and a one-line note in `PROCESS.md`, not just a silent re-attempt in
+    the same commit.
+
+## The gate
+
+15. **`pnpm check` and `pnpm check:evidence` are the gate, not a
+    suggestion.** Don't report a change as done without both passing
+    locally against a built app (`pnpm build`, then run
+    `dist/server/entry.mjs`, per `spec/global-setup.ts`). Specs assert only
+    on their own slots and drivers, never on global counts, and every
+    session a test creates leaves in `afterEach`.
