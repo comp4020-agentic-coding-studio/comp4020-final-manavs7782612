@@ -97,7 +97,7 @@ function stream(req: IncomingMessage, res: ServerResponse): void {
 function readmePage(): string {
   const md = readFileSync(join(ROOT, "README.md"), "utf8");
   return `<!doctype html><html lang="en-AU"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>About Group Chat Government</title><link rel="stylesheet" href="/style.css"></head>
+<title>About Democracy?</title><link rel="stylesheet" href="/style.css"></head>
 <body class="doc"><main><p><a href="/">&larr; back to the table</a></p>${render(md)}</main></body></html>`;
 }
 

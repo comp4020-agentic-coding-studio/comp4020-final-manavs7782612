@@ -3,7 +3,7 @@
 <!-- DRAFT by Claude, for Manav to rewrite. -->
 
 On 2026-11-05 I abandoned the previous concept (ComplyLogic, a Chain of
-Responsibility compliance tracker) and restarted as Group Chat Government, a
+Responsibility compliance tracker) and restarted as Democracy?, a
 multiplayer voting game. The plan I wrote with Claude set one narrow, testable
 claim first (README "What good means here") and the harness rules in CLAUDE.md
 follow from it, one rule per part of the claim.

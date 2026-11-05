@@ -1,4 +1,4 @@
-# Group Chat Government
+# Democracy?
 
 <!-- DRAFT by Claude, for Manav to rewrite in their own words before submission. -->
 

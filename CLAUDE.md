@@ -1,4 +1,4 @@
-# Group Chat Government — rules for the agent
+# Democracy? — rules for the agent
 
 The claim this app makes (README.md) is that who holds power and what passes is
 exactly what the table voted, live for everyone, and never revisable. Every rule
