@@ -5,8 +5,6 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["spec/**/*.test.ts"],
-    // several checks wait on the live stream, each for up to a few seconds
-    testTimeout: 20_000,
     globalSetup: ["./spec/global-setup.ts"],
   },
 });
