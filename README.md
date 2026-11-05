@@ -1,98 +1,136 @@
-# Slotlock
+# ComplyLogic
 
 **Live:** https://comp4020-final-manavs7782612.fly.dev
 
-Slotlock is a dock and load-slot booking tool for small Australian transport
-operators. It exists because of one fact: from August 2026, Heavy Vehicle
-National Law reforms make a documented Safety Management System a legal duty
-for every party in the Chain of Responsibility — not just large fleets with
-enterprise TMS budgets. A missed fatigue breach isn't a UX bug here; it's a
-Category 1 offence carrying penalties up to $436,850 and five years'
-imprisonment for an individual, or over $4.2M for a corporation.
-
-Existing software doesn't close this gap. Dock schedulers like GoRamp and
-Opendock solve detention fees for US warehouses and have no concept of
-Australian driver-hours law. Enterprise suites like Kynection or Allotrac
-bury compliance as one module in a system priced for large fleets. Tools
-built for small AU carriers — MachShip, MyTrucking — are on record as lacking
-deep Chain of Responsibility functionality. Nobody stops a non-compliant
-booking from happening. They all report on it afterward.
+ComplyLogic is an evidence record and compliance dashboard for a delivery's
+Chain of Responsibility (CoR). Under the Heavy Vehicle National Law, a
+company's only defence against CoR liability is proving it did everything
+"reasonably practicable." Legal commentary on the first HVNL CoR
+prosecution
+([Godfrey Haulage, 2020](https://www.allens.com.au/insights-news/insights/2020/03/first-prosecution-for-breach-of-new-heavy-vehicle-national-law-chain-of-responsibility-duties/))
+is blunt: "we always check" is not evidence. What holds up is a
+timestamped, attributable record of *that specific load*. *Barrie Toepfer
+v CGU Insurance* [2016] NSWCA 67 shows the same from the insurance side.
+Disputes turn on exactly who loaded the freight and whether the driver
+checked. Kynection, Allotrac and EROAD manage one operator's own CoR
+program well; AgriChain gets closest to crossing company lines with a
+joint sign-off, but that's one declaration, not a running trail that also
+records what was refused and what deadlines slipped. ComplyLogic is built
+for the case those tools don't cover: a consignor, a loading depot, a
+carrier and a receiving business who are four separate companies with no
+shared system of record, brought together only for the life of one
+delivery.
 
 ## What good means here
 
-**Good, for this app, means one thing above all others: a slot that would
-breach a driver's legal hours cannot be booked — not "should not," not
-"is flagged," but cannot.** Everything else in this document, `CLAUDE.md`,
-and `spec/` exists to make that true in practice, not just in prose.
+**Good means one thing above all: every delivery produces an unalterable,
+attributable record of what happened, by whom, when. A missed legal
+deadline is surfaced and tracked, not left to quietly disappear once a
+load eventually moves.**
 
-What's enforced (the app will refuse to let this happen, and a spec check
-proves it):
+What's enforced:
 
-- **A claim is rejected outright, synchronously, if the claimed driver's
-  remaining legal hours are insufficient** for the slot's duration plus
-  transit buffer. No override exists in the UI for this case, for any role.
-- **A slot cannot be claimed by two dispatchers at once**; the second claim
-  is rejected, not silently overwritten. The hours check and the
-  contention check both live inside the same guarded database statement,
-  so there is no gap between "check" and "write" for a race to land in.
-- **Every lock, completion and rejection is written to an append-only
-  log**, naming who did it. Nothing in the system can edit or delete a
-  past entry — not even an admin role.
+- **A delivery can never skip or reorder its status steps** (loaded,
+  restrained, departed, delivered), each confirmed only by the right
+  party. A blocked attempt is itself written to the record.
+- **A driver without enough remaining legal hours, or without
+  `MIN_REST_HOURS` (7, the HVNL Standard Hours minimum continuous
+  stationary rest) since their last delivery, can never be assigned.**
+  Both checks are conditions of the same guarded database write that
+  performs the assignment, never a separate check, never overridable.
+- **Two consignors can never both assign the same driver**, for the same
+  reason: contention, hours and rest are all conditions of one guarded
+  statement, so there's no gap for a race to land in.
+- **Every confirmation and rejection is append-only**, naming who did it,
+  with an optional note and photo. Nothing can edit or delete a past
+  entry, or the photo it points to.
+- **A missed deadline becomes a tracked incident automatically.** If a
+  delivery's `load_by`/`depart_by`/`arrive_by` passes with the matching
+  step unconfirmed, the system raises an incident a manager must act on.
+  It doesn't wait for anyone to notice. Resolving one records the cause,
+  any rearranged time, and any penalty pay, without rewriting what was
+  originally legally expected. The compliance dashboard counts how often
+  this happens across every delivery, including ones that eventually
+  moved late and were never raised as an incident. The pattern matters
+  as much as any single breach.
+- **`departed` and `delivered` require an observed GPS position, not just
+  the confirming party's say-so.** A truck can't be recorded as departed
+  until a phone's own location is seen outside the pickup site, and can't
+  be recorded as delivered until one is seen at the dropoff site. The
+  same guarded database write that checks role and sequence also checks
+  this. A truck that leaves a site and comes back shortly after is
+  flagged for a manager automatically, whether or not anyone reported it.
 
-What's judged (a human call this app supports but doesn't automate):
+What's judged, not enforced: which loader, driver and receiver a consignor
+names on a delivery (by name and company, not a pick from a shared roster),
+the category and amount a manager records when resolving an incident, and
+the note a manager leaves when resolving a geofence flag.
 
-- Whether a *reassignment* to another driver is the right business
-  decision versus rescheduling the load entirely — Slotlock surfaces a
-  ranked list of compliant drivers, but the dispatcher chooses.
-- Whether a dock's own appointment windows are generous enough for the
-  operator's actual yard — that's a judgment about the business, not a
-  safety rule, so it's configurable rather than enforced.
+Five parties, by function: **consignor**, **loader**, **driver**,
+**receiver**, each delivery visible only to its own four, plus
+**manager**, who sees every delivery and the dashboard but can never
+confirm a step on anyone's behalf. A consignor registers their own company;
+everyone else arrives by claiming a one-time invite link tied to the
+specific delivery they were named on, carrying their own company's name
+with them, not a login the consignor's company controls. Real time matters
+because a confirmation, a blocked attempt, or a freshly detected incident
+has to reach every relevant screen immediately, not in a report compiled
+later.
 
-The system distinguishes three parties by function, per the Chain of
-Responsibility's own definitions, not job title: the **dispatcher** who
-claims a slot, the **driver** who is bound by it, and the **consignor/
-consignee** who can see it fill live, anonymously, with no login. Real-time
-matters here specifically because the race condition — two dispatchers
-claiming the same door, a driver's hours ticking over mid-claim — is the
-exact moment a paper-based or asynchronous system fails regional operators
-today.
+This app doesn't guarantee legal admissibility or verify a photo's
+honesty. It only guarantees attribution, timing, and immutability.
 
-Sources consulted: NHVR Chain of Responsibility primary-duty guidance,
-HVNL 2026 reform coverage (ctrack.com.au, fleetcard.com.au), industry
-analysis naming the MachShip/MyTrucking compliance gap (kynection.com.au).
+Sources: NHVR CoR primary-duty guidance;
+[Allens — first HVNL CoR prosecution](https://www.allens.com.au/insights-news/insights/2020/03/first-prosecution-for-breach-of-new-heavy-vehicle-national-law-chain-of-responsibility-duties/);
+*Barrie Toepfer v CGU Insurance* [2016] NSWCA 67; HVNL Standard Hours
+work/rest rules (Kynection); Kynection/Allotrac/EROAD/AgriChain feature
+pages.
 
 ## What this deliberately doesn't do
 
-- **No real telematics or fatigue-monitoring integration.** A driver's
-  `hours_remaining` is a number this app tracks itself, decremented when a
-  slot completes. For a real operator this would read from a certified
-  logbook or ELD feed; here it's a deliberate simplification stated
-  plainly so it doesn't read as an overclaim.
-- **No multi-operator accounts, no signup.** A fixed, small roster of
-  dispatchers and drivers, each with a name and a 4-digit PIN, seeded in
-  source. This is a single-operator prototype, not a SaaS with tenants.
-- **No more than a handful of docks**, all fixed in source.
-- **No admin override, force-book, or "edit flag" of any kind.** If a
-  future feature seemed to need one, the answer is to stop and ask, not to
-  build it — it would contradict the one claim this app exists to make
-  true.
-- **No security boundary around the consumer/dock view.** `/dock` is
-  public on purpose, same as a real yard's status board, but it shows no
-  names and no PII — fill status only.
+- **No real telematics, fatigue monitoring, or ELD integration.**
+  `hours_remaining` and `resting_since` are tracked by the app itself,
+  decremented or reset on confirmed events, a deliberate simplification.
+  GPS position comes from the driver's own phone (the browser's
+  Geolocation API, posted while the delivery room is open), not fleet
+  hardware.
+- **Geofencing is a fixed 150m radius and a 60-minute revisit window, not
+  survey-grade boundary detection.** Generous enough to absorb ordinary
+  consumer GPS error; a deliberately spoofed GPS source is not something
+  this app detects.
+- **No Basic/Advanced Fatigue Management accreditation.** Only the
+  Standard Hours option (12h work / 7h continuous rest per 24h) is
+  modeled.
+- **No managed organizations.** `company_name` is free text a party types
+  in once, not a company account with its own admins, members or login —
+  see decisions/0005. There's no org-switching, no company directory, and
+  no way for a company to see its own history across deliveries it wasn't
+  named on.
+- **No email delivery for invites.** An invite link is shown to the
+  consignor to copy and send however they'd already contact that person;
+  the app doesn't send it for them.
+- **No admin override, force-advance, or edit of any kind**, for any role
+  including manager. A manager can resolve an incident, never confirm a
+  delivery step or change a logged fact.
+- **No legal certification.** Whether a given record is sufficient in a
+  specific dispute is a legal question this app doesn't answer.
 
 ## How it's built
 
-Astro in SSR mode (`@astrojs/node`, standalone adapter) and a `node:sqlite`
-file hold all state — slots, drivers, docks, sessions and the audit log.
-Dispatchers and drivers log in with name + PIN against a fixed seeded
-roster; the consumer dock view needs no identity at all. Every write that
-changes a slot's state goes through one transaction, with the compliance
-check and the contention check inside the same guarded `UPDATE` statement,
-so a race between two claims has exactly one winner and the loser is told
-why. State changes push to every open tab over
+Astro SSR (`@astrojs/node` standalone) and `node:sqlite` hold all state;
+photos live alongside it on the same volume. Every write goes through one
+guarded transaction. The compliance check and the state change are one
+statement, so a race has exactly one winner and a skipped step is
+structurally impossible. A delivery's pickup/dropoff addresses are
+geocoded once, at creation, via OpenStreetMap's Nominatim; a driver's
+phone posts its own position while the delivery room is open, and the
+departure/delivery gate and the revisit flag are both read from that same
+append-only ping log, inside the guarded write itself (a `haversine_m`
+SQL function registered on the database connection). A periodic sweep
+detects missed deadlines and raises incidents idempotently. State pushes
+over
 [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events);
-claims, reassignments, reschedules and completions are plain POSTs. One
-Fly.io machine, one volume: see `fly.toml` and the `Dockerfile` for what
-that fixes. `CLAUDE.md` says what rules the build is held to; `PROCESS.md`
-says how it actually went; `decisions/` holds the reasoning behind the
-big calls.
+confirmations are multipart POSTs, the one deliberate exception to
+strict-JSON. One Fly.io machine, one volume. `CLAUDE.md` holds the
+build's rules; `PROCESS.md` the actual process; `decisions/` the
+reasoning behind the big calls.

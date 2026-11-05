@@ -2,8 +2,9 @@
 
 # Builds and runs the actual Astro app (SSR, @astrojs/node standalone adapter).
 # fly.toml fixes PORT=8080, one machine, and a volume at /data — DB_PATH below
-# points the sqlite file there so a slot's lock and the audit log survive a
-# restart or redeploy.
+# points the sqlite file there so a delivery's state and its evidence log
+# (including uploaded photos, stored alongside it) survive a restart or
+# redeploy.
 
 FROM node:24.21.0-slim AS build
 WORKDIR /app
@@ -22,7 +23,7 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=build /app/dist ./dist
 COPY README.md ./README.md
 
-ENV DB_PATH=/data/slotlock.db
+ENV DB_PATH=/data/chainlock.db
 ENV HOST=0.0.0.0
 EXPOSE 8080
 CMD ["node", "dist/server/entry.mjs"]
