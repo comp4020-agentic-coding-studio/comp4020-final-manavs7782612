@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Group Chat Government</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1>Group Chat Government</h1>
+      <a href="/readme/">About</a>
+    </header>
+
+    <main>
+      <section id="join" class="panel" hidden>
+        <h2>Take a seat</h2>
+        <p>Pick a name. It's yours for good, and every vote you cast is cast under it.</p>
+        <form id="join-form">
+          <input id="join-name" name="name" maxlength="12" minlength="2" required autocomplete="off" placeholder="your name" />
+          <button type="submit">Join the table</button>
+        </form>
+        <p id="join-error" class="error" role="alert"></p>
+      </section>
+
+      <section class="stage">
+        <div id="table" class="table" aria-label="The table">
+          <div class="tabletop"><span id="table-label">THE TABLE</span></div>
+        </div>
+        <p id="gallery" class="gallery"></p>
+      </section>
+
+      <section id="controls" class="panel">
+        <div class="phase">
+          <h2 id="phase-title">Waiting for citizens…</h2>
+          <span id="countdown" class="countdown" aria-live="off"></span>
+        </div>
+        <p id="phase-detail"></p>
+        <blockquote id="bill" hidden></blockquote>
+        <div id="actions"></div>
+        <form id="propose-form" hidden>
+          <label for="bill-text">You hold the floor. Table your bill:</label>
+          <textarea id="bill-text" maxlength="280" rows="3" required placeholder="Be it enacted that…"></textarea>
+          <button type="submit">Table the bill</button>
+        </form>
+        <p id="action-error" class="error" role="alert"></p>
+      </section>
+
+      <section class="panel">
+        <h2>Bills Passed</h2>
+        <ol id="bills" class="bills"></ol>
+        <p id="no-bills" class="muted">Nothing has passed. The republic is young.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Minutes</h2>
+        <ul id="feed" class="feed"></ul>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

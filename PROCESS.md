@@ -1,20 +1,16 @@
 # Process overview
 
-<!-- TEMPLATE: replace everything in this file with your own account, this
-     comment included --- `pnpm check:evidence` fails while it's still here. -->
+<!-- DRAFT by Claude, for Manav to rewrite. -->
 
-How you got from the brief to the harness, agentic workflow and stack behind
-this app, told however suits the work. The
-[final project brief](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/assessments/final-project/#what-you-submit)
-says what it covers and how long it runs.
+On 2026-11-05 I abandoned the previous concept (ComplyLogic, a Chain of
+Responsibility compliance tracker) and restarted as Group Chat Government, a
+multiplayer voting game. The plan I wrote with Claude set one narrow, testable
+claim first (README "What good means here") and the harness rules in CLAUDE.md
+follow from it, one rule per part of the claim.
 
-Markers follow the links you give them; they don't trawl the repo for evidence
-you didn't point at. A link to the record is one whose text is the commit hash,
-and it can sit anywhere in a sentence:
-[`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d) for one
-commit, or
-[`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
-for a range.
+Stack: Node 24 with no dependencies — `node:http`, `node:sqlite` and server-sent
+events. The guarded-write and SSE-room patterns carry over from the earlier
+project; the framework didn't, because the app is one page and a JSON API.
 
-`pnpm check:evidence` checks that this comment is gone and that every commit you
-link exists in this repo. Whether the account is any good is the marker's call.
+Design judgements are recorded in `decisions/`; the spec in `spec/` checks each
+rule against the running app.

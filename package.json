@@ -7,7 +7,9 @@
     "typecheck": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm test",
     "check:evidence": "node scripts/check-evidence.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "start": "node src/server.ts",
+    "dev": "ELECTION_SECS=15 DRAFT_SECS=30 VOTE_SECS=15 node --watch src/server.ts"
   },
   "devDependencies": {
     "@types/jsdom": "^30.0.0",
