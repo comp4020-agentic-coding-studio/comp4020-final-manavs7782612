@@ -53,6 +53,7 @@ describe("a round of government", { timeout: 300_000 }, () => {
     expect(s.round.status).toBe("drafting");
     expect(s.round.presenterId).toBe(b.id);
     billId = s.round.id;
+    expect(s.feed.find((f: any) => f.kind === "elected" && f.name === b.name)?.detail).toBe("2-0");
 
     expect((await call("/api/propose", a.token, { text: "a coup" })).status).toBe(403);
     expect((await call("/api/declare", a.token, {})).status).toBe(409); // no election open
@@ -86,6 +87,12 @@ describe("a round of government", { timeout: 300_000 }, () => {
     expect(again).toMatchObject({ yea: 3, nay: 0 });
   });
 
+  it("names who voted yea and who voted nay on a passed bill", async () => {
+    const bill = (await call("/api/bills")).json.find((x: any) => x.id === billId);
+    expect(bill.yeaNames.sort()).toEqual([a.name, b.name, c.name].sort());
+    expect(bill.nayNames).toEqual([]);
+  });
+
   it("breaks a tie for whoever declared first, and a silent Presenter fails the bill", async () => {
     const e = await freshElection();
     expect((await call("/api/declare", c.token, {})).status).toBe(200);
@@ -98,5 +105,11 @@ describe("a round of government", { timeout: 300_000 }, () => {
     expect(after.round.phase).toBe("election");
     expect(after.feed.some((f: any) => f.kind === "silent" && f.name === c.name)).toBe(true);
     expect((await call("/api/bills")).json.some((x: any) => x.id === s.round.id)).toBe(false);
+
+    const failed = (await call("/api/bills/failed")).json;
+    const mine = failed.find((x: any) => x.id === s.round.id);
+    expect(mine).toMatchObject({ text: null, presenter: c.name, yea: 0, nay: 0 });
+    expect(mine.yeaNames).toEqual([]);
+    expect(mine.nayNames).toEqual([]);
   });
 });

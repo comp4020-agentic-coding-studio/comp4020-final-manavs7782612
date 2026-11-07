@@ -25,7 +25,9 @@ export let version = 0;
 
 function event(now: number, kind: string, roundId: number | null, citizenId: number | null, detail: string | null = null): void {
   run("INSERT INTO events (at, round_id, citizen_id, kind, detail) VALUES (?, ?, ?, ?, ?)", now, roundId, citizenId, kind, detail);
-  logEvent({ kind, roundId, citizenId, detail });
+  const citizen = citizenId ? (one("SELECT name FROM citizens WHERE id = ?", citizenId)?.name as string | undefined) : undefined;
+  const billNo = roundId ? (one("SELECT bill_no AS n FROM rounds WHERE id = ?", roundId)?.n as number | null) : undefined;
+  logEvent({ kind, roundId, billNo: billNo ?? undefined, citizenId, citizen, detail });
   version++;
 }
 
@@ -152,6 +154,7 @@ export function billTally(roundId: number): { yea: number; nay: number } {
   return { yea: (r.yea as number) ?? 0, nay: (r.nay as number) ?? 0 };
 }
 
+
 // Resolves whatever round has run out of time. Every resolution is one UPDATE
 // guarded on the status it expects and on closes_at having passed: run it twice,
 // or from two places at once, and the second is a no-op. The outcome is computed
@@ -172,10 +175,19 @@ export function sweep(now = Date.now()): boolean {
         event(now, "no_candidates", r.id, null);
         if (anyoneHere()) openElection(now);
       } else {
-        event(now, "elected", r.id, winner);
+        const total = (one("SELECT count(*) AS n FROM votes WHERE round_id = ?", r.id)!.n as number);
+        const winnerVotes = (one(
+          "SELECT count(*) AS n FROM votes WHERE round_id = ? AND choice = ?", r.id, String(winner),
+        )!.n as number);
+        event(now, "elected", r.id, winner, `${winnerVotes}-${total - winnerVotes}`);
+        // The bill number is its own sequence, separate from the round id:
+        // every elected Presenter gets one, in order, whether or not they
+        // ever table a bill — so "#3" means the same thing on the page and
+        // in a log line, with no election rounds skipped into the count.
+        const billNo = (one("SELECT coalesce(max(bill_no), 0) AS n FROM rounds")!.n as number) + 1;
         const bill = Number(run(
-          "INSERT INTO rounds (phase, status, opens_at, closes_at, presenter_id, election_id) VALUES ('bill', 'drafting', ?, ?, ?, ?)",
-          now, now + DRAFT_MS, winner, r.id,
+          "INSERT INTO rounds (phase, status, opens_at, closes_at, presenter_id, election_id, bill_no) VALUES ('bill', 'drafting', ?, ?, ?, ?, ?)",
+          now, now + DRAFT_MS, winner, r.id, billNo,
         ).lastInsertRowid);
         event(now, "drafting", bill, winner);
       }
@@ -245,7 +257,7 @@ export function vote(citizenId: number, choice: unknown, now = Date.now()): void
        ON CONFLICT (round_id, citizen_id) DO UPDATE SET choice = excluded.choice, cast_at = excluded.cast_at`,
       r.id, citizenId, value, now,
     );
-    event(now, "voted", r.id, citizenId);
+    event(now, "voted", r.id, citizenId, value);
   });
 }
 
@@ -268,14 +280,50 @@ export function propose(citizenId: number, rawText: unknown, now = Date.now()): 
 
 // ---------- what everyone sees ----------
 
-export function passedBills(limit = -1): Row[] {
+// `id` is the round id (shared with elections, so it isn't sequential across
+// bills alone); `billNo` is a bill-only sequence, assigned once when the
+// Presenter is elected and never reassigned (trigger in db.ts). Both are
+// carried through to events and logs, so a log line's `roundId`/`billNo`
+// names the same bill as what's shown here.
+// Who voted yea/nay on a bill, by name, in join order.
+function names(roundId: number, choice: "yea" | "nay"): string[] {
   return all(
-    `SELECT r.id, r.bill_text AS text, r.yea, r.nay, r.resolved_at AS resolvedAt, c.name AS presenter
+    `SELECT c.name FROM votes v JOIN citizens c ON c.id = v.citizen_id
+      WHERE v.round_id = ? AND v.choice = ? ORDER BY c.name`,
+    roundId, choice,
+  ).map((r) => r.name as string);
+}
+
+export function passedBills(limit = -1): Row[] {
+  const bills = all(
+    `SELECT r.id, r.bill_no AS billNo, r.bill_text AS text, r.yea, r.nay, r.resolved_at AS resolvedAt, c.name AS presenter
        FROM rounds r JOIN citizens c ON c.id = r.presenter_id
       WHERE r.phase = 'bill' AND r.bill_outcome = 'passed'
       ORDER BY r.resolved_at DESC, r.id DESC LIMIT ?`,
     limit,
   );
+  for (const b of bills) {
+    b.yeaNames = names(b.id as number, "yea");
+    b.nayNames = names(b.id as number, "nay");
+  }
+  return bills;
+}
+
+// Includes a silent Presenter's round (bill_text stays null: nothing was ever
+// tabled, so there's nothing to quote and no votes to name).
+export function failedBills(limit = -1): Row[] {
+  const bills = all(
+    `SELECT r.id, r.bill_no AS billNo, r.bill_text AS text, r.yea, r.nay, r.resolved_at AS resolvedAt, c.name AS presenter
+       FROM rounds r JOIN citizens c ON c.id = r.presenter_id
+      WHERE r.phase = 'bill' AND r.bill_outcome = 'failed'
+      ORDER BY r.resolved_at DESC, r.id DESC LIMIT ?`,
+    limit,
+  );
+  for (const b of bills) {
+    b.yeaNames = names(b.id as number, "yea");
+    b.nayNames = names(b.id as number, "nay");
+  }
+  return bills;
 }
 
 export function snapshot(now = Date.now()) {
@@ -283,7 +331,10 @@ export function snapshot(now = Date.now()) {
   const r = activeRound();
   let round: Row | null = null;
   if (r) {
-    round = { id: r.id, phase: r.phase, status: r.status, closesAt: r.closes_at, presenterId: r.presenter_id, billText: r.bill_text };
+    round = {
+      id: r.id, phase: r.phase, status: r.status, closesAt: r.closes_at,
+      presenterId: r.presenter_id, billText: r.bill_text, billNo: r.bill_no,
+    };
     if (r.phase === "election") {
       round.candidates = all(
         `SELECT c.citizen_id AS id, z.name, count(v.citizen_id) AS votes
@@ -298,13 +349,14 @@ export function snapshot(now = Date.now()) {
     round.voters = all("SELECT citizen_id AS id FROM votes WHERE round_id = ?", r.id).map((v) => v.id);
   }
   const feed = all(
-    `SELECT e.id, e.at, e.kind, e.detail, c.name FROM events e LEFT JOIN citizens c ON c.id = e.citizen_id
+    `SELECT e.id, e.at, e.kind, e.detail, e.round_id AS roundId, r.bill_no AS billNo, c.name
+       FROM events e LEFT JOIN citizens c ON c.id = e.citizen_id LEFT JOIN rounds r ON r.id = e.round_id
       WHERE e.kind != 'voted' ORDER BY e.id DESC LIMIT ?`,
     FEED_IN_SNAPSHOT,
   );
   return {
     now, seats: SEATS, windows: { election: ELECTION_MS, draft: DRAFT_MS, vote: VOTE_MS },
-    citizens: seated, round, bills: passedBills(BILLS_IN_SNAPSHOT), feed,
+    citizens: seated, round, bills: passedBills(BILLS_IN_SNAPSHOT), failedBills: failedBills(BILLS_IN_SNAPSHOT), feed,
   };
 }
 

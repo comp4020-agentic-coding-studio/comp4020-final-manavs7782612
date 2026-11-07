@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS rounds (
   bill_text    TEXT,
   yea          INTEGER,
   nay          INTEGER,
-  bill_outcome TEXT CHECK (bill_outcome IN ('passed', 'failed'))
+  bill_outcome TEXT CHECK (bill_outcome IN ('passed', 'failed')),
+  bill_no      INTEGER
 );
 CREATE INDEX IF NOT EXISTS rounds_status ON rounds (status);
 
@@ -73,6 +74,9 @@ CREATE TRIGGER IF NOT EXISTS rounds_bill_text_once BEFORE UPDATE OF bill_text ON
 CREATE TRIGGER IF NOT EXISTS rounds_presenter_once BEFORE UPDATE OF presenter_id ON rounds
   WHEN OLD.presenter_id IS NOT NULL AND NEW.presenter_id IS NOT OLD.presenter_id
   BEGIN SELECT RAISE(ABORT, 'a Presenter is never replaced'); END;
+CREATE TRIGGER IF NOT EXISTS rounds_bill_no_once BEFORE UPDATE OF bill_no ON rounds
+  WHEN OLD.bill_no IS NOT NULL AND NEW.bill_no IS NOT OLD.bill_no
+  BEGIN SELECT RAISE(ABORT, 'a bill number is never reassigned'); END;
 CREATE TRIGGER IF NOT EXISTS rounds_no_delete BEFORE DELETE ON rounds
   BEGIN SELECT RAISE(ABORT, 'rounds are never deleted'); END;
 CREATE TRIGGER IF NOT EXISTS votes_frozen BEFORE UPDATE ON votes

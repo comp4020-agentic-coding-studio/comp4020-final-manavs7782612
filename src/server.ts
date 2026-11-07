@@ -4,7 +4,7 @@ import { extname, join, normalize } from "node:path";
 import { MAX_STREAMS, MAX_STREAMS_PER_CITIZEN } from "./lib/config.ts";
 import {
   Refused, citizenByToken, connect, declare, disconnect, ensureRound, join as joinTable,
-  myVote, passedBills, propose, resetPresence, snapshot, sweep, version, vote,
+  failedBills, myVote, passedBills, propose, resetPresence, snapshot, sweep, version, vote,
 } from "./lib/game.ts";
 import { render } from "./lib/markdown.ts";
 
@@ -108,7 +108,14 @@ async function api(req: IncomingMessage, res: ServerResponse, path: string): Pro
     return send(res, 200, { ...snapshot(), me: me?.id ?? null, myVote: me ? myVote(me.id) : null });
   }
   if (path === "/api/bills" && req.method === "GET") return send(res, 200, passedBills());
-  if (req.method !== "POST") return send(res, ["/api/stream", "/api/state", "/api/bills"].includes(path) ? 405 : 404, { error: "method not allowed" });
+  if (path === "/api/bills/failed" && req.method === "GET") return send(res, 200, failedBills());
+  if (req.method !== "POST") {
+    return send(
+      res,
+      ["/api/stream", "/api/state", "/api/bills", "/api/bills/failed"].includes(path) ? 405 : 404,
+      { error: "method not allowed" },
+    );
+  }
 
   if (!["/api/join", "/api/declare", "/api/vote", "/api/propose"].includes(path)) return send(res, 404, { error: "not found" });
   const b = await body(req);

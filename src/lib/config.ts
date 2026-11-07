@@ -26,7 +26,7 @@ export const DRAFT_MS = seconds("DRAFT_SECS", 60, 2, 900) * 1000;
 export const VOTE_MS = seconds("VOTE_SECS", 25, 2, 600) * 1000;
 // How long a citizen keeps their seat after their last tab closes, so a page
 // reload doesn't stand them up.
-export const GRACE_MS = seconds("SEAT_GRACE_SECS", 5, 0, 60) * 1000;
+export const GRACE_MS = seconds("SEAT_GRACE_SECS", 0.5, 0, 60) * 1000;
 
 export const NAME_MIN = 2;
 export const NAME_MAX = 12;

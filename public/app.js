@@ -40,6 +40,15 @@ let state = null;
 let skew = 0; // server clock minus ours, so the countdown follows the server
 const seatEls = new Map(); // citizen id -> element
 let prev = { candidates: new Set(), presenterId: null, lastEvent: 0 };
+// Rebuilding bills/feed is only safe when their content actually changed: both
+// lists are append-only (CLAUDE.md "the record is permanent"), so a signature
+// of their newest id + length is enough to tell. Rebuilding every tick (the
+// server pushes a snapshot once a second even when nothing changed, to keep
+// countdowns honest) would tear down and recreate the <li> nodes under a
+// reader's cursor, cancelling any text selection mid-read.
+let renderedBills = "";
+let renderedFailedBills = "";
+let renderedFeed = "";
 
 async function post(path, body) {
   const res = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) });
@@ -177,35 +186,73 @@ function renderControls(s) {
   }
 }
 
-function renderRecord(s) {
-  const list = $("bills");
-  list.replaceChildren(...s.bills.map((b) => {
-    const li = document.createElement("li");
-    const text = document.createElement("span"); text.textContent = b.text;
+function namesOrDash(list) {
+  return list.length ? list.join(", ") : "—";
+}
+
+// Shared by Bills Passed and Bills Failed: same shape (CLAUDE.md `passedBills`/
+// `failedBills` both return `{billNo, text, presenter, yea, nay, resolvedAt,
+// yeaNames, nayNames}`), just a different outcome word and an empty `text`
+// when a silent Presenter never tabled anything.
+function renderBillList(listEl, noneEl, bills, outcome) {
+  const li = (b) => {
+    const el = document.createElement("li");
+    const text = document.createElement("span");
+    text.textContent = b.text ?? "(no bill was ever tabled)";
     const meta = document.createElement("small");
-    meta.textContent = `presented by ${b.presenter} · passed ${b.yea}–${b.nay} · ${new Date(b.resolvedAt).toLocaleString()}`;
-    li.append(text, meta);
-    return li;
-  }));
-  $("no-bills").hidden = s.bills.length > 0;
+    meta.textContent = `#${b.billNo} · presented by ${b.presenter} · ${outcome} ${b.yea}–${b.nay} · ${new Date(b.resolvedAt).toLocaleString()}`;
+    const votes = document.createElement("div");
+    votes.className = "roll-call";
+    const yea = document.createElement("div"); yea.className = "yea";
+    yea.append(Object.assign(document.createElement("b"), { textContent: "Yea" }), document.createTextNode(` ${namesOrDash(b.yeaNames)}`));
+    const nay = document.createElement("div"); nay.className = "nay";
+    nay.append(Object.assign(document.createElement("b"), { textContent: "Nay" }), document.createTextNode(` ${namesOrDash(b.nayNames)}`));
+    votes.append(yea, nay);
+    el.append(text, meta, votes);
+    return el;
+  };
+  listEl.replaceChildren(...bills.map(li));
+  noneEl.hidden = bills.length > 0;
+}
+
+function renderRecord(s) {
+  // Both lists only ever grow (bills/events are append-only, never edited),
+  // so the newest id plus the length uniquely identifies what's shown. Skip
+  // the rebuild when that hasn't moved, so a selection survives the snapshot
+  // the server pushes every second regardless of whether anything changed.
+  const billsSig = `${s.bills.length}:${s.bills[0]?.billNo ?? ""}`;
+  if (billsSig !== renderedBills) {
+    renderedBills = billsSig;
+    renderBillList($("bills"), $("no-bills"), s.bills, "passed");
+  }
+
+  const failedSig = `${s.failedBills.length}:${s.failedBills[0]?.billNo ?? ""}`;
+  if (failedSig !== renderedFailedBills) {
+    renderedFailedBills = failedSig;
+    renderBillList($("failed-bills"), $("no-failed-bills"), s.failedBills, "failed");
+  }
 
   const say = {
     joined: (e) => `${e.name} joined the republic`,
     election_opened: () => "An election opened",
     declared: (e) => `${e.name} stood for Presenter`,
     no_candidates: () => "Nobody stood; the election lapsed",
-    elected: (e) => `${e.name} was elected Presenter`,
+    elected: (e) => `${e.name} was elected Presenter ${e.detail}`,
     drafting: (e) => `${e.name} took the floor`,
-    proposed: (e) => `${e.name} tabled: “${e.detail}”`,
-    passed: (e) => `${e.name}'s bill PASSED ${e.detail}`,
-    failed: (e) => `${e.name}'s bill failed ${e.detail}`,
+    proposed: (e) => `${e.name} tabled #${e.billNo}: “${e.detail}”`,
+    passed: (e) => `${e.name}'s bill #${e.billNo} PASSED ${e.detail}`,
+    failed: (e) => `${e.name}'s bill #${e.billNo} failed ${e.detail}`,
     silent: (e) => `${e.name} said nothing; the bill failed`,
   };
-  $("feed").replaceChildren(...s.feed.map((e) => {
-    const li = document.createElement("li");
-    li.textContent = `${new Date(e.at).toLocaleTimeString()}  ${(say[e.kind] ?? (() => e.kind))(e)}`;
-    return li;
-  }));
+  const feedSig = `${s.feed.length}:${s.feed[0]?.id ?? ""}`;
+  if (feedSig !== renderedFeed) {
+    renderedFeed = feedSig;
+    $("feed").replaceChildren(...s.feed.map((e) => {
+      const li = document.createElement("li");
+      li.textContent = `${new Date(e.at).toLocaleTimeString()}  ${(say[e.kind] ?? (() => e.kind))(e)}`;
+      return li;
+    }));
+  }
 }
 
 function tick() {
