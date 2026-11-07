@@ -16,10 +16,8 @@ this because it's the opposite problem: the whole thing is one claim that
 either holds or doesn't, and a stranger can feel whether it holds within
 thirty seconds of sitting at the table. If someone shows up alone, declares
 themselves candidate, wins by default, and passes whatever bill they want,
-that's not a bug, that's the satire working. The hard part isn't the
-feature list, it's making sure that when it happens, nobody can say the
-procedure was gamed. Every rule in CLAUDE.md exists to protect that one
-sentence in README.md ("What good means here").
+that's not a bug, that's the satire working. Every rule in CLAUDE.md exists
+to protect that one sentence in README.md ("What good means here").
 
 ## Writing the claim before the code
 
@@ -86,23 +84,30 @@ Concretely, working through it looked like this:
   the claim itself, so I wrote down the reasoning and left them open to
   revision instead of locking them in CLAUDE.md.
 
-## Stack
+## Stack and agentic workflow
 
-Node 24, no dependencies: `node:http`, `node:sqlite`, server-sent events.
-The guarded-write and SSE patterns carried over from the earlier project;
-the framework didn't, because this app is one page and a JSON API, and
-Astro was solving a problem (multi-page SSR) this app doesn't have.
+Node 24, no dependencies: `node:http`, `node:sqlite`, server-sent events. The
+guarded-write and SSE patterns carried over from the earlier project; the
+framework didn't, because this app is one page and a JSON API, and Astro was
+solving a problem (multi-page SSR) this app doesn't have. SQLite over a
+managed Postgres add-on for the same reason: one machine, one volume, no
+second service to deploy or keep credentials for, and WAL mode already gives
+non-blocking reads against the one writer `tx()` serialises. The agentic
+workflow itself was constraints-first, not features-first: README's claim
+was fixed before any server code, same as the harness's non-negotiables are
+each traceable to a clause of it, rather than inferred afterwards from
+whatever got built. The full trade-off case, with sources, is
+decisions/006-stack-and-workflow.md.
 
 ## Where I steered versus where the agent proposed
 
 I decided what the app is and what it refuses to be: a satire of an empty
 parliament, not a general voting platform; no accounts beyond claiming a
 name; no admin role of any kind, ever; strictly black and white. The agent
-proposed the mechanics that make those decisions hold up under concurrent
-use, the single guarded `UPDATE` pattern, the SSE snapshot-plus-delta
-broadcast, the grace-period seat handling in decisions/004, and wrote the
-first draft of every decision record for me to check against what I
-actually meant.
+proposed the mechanics that make those hold up under concurrent use, the
+guarded `UPDATE` pattern, the SSE snapshot-plus-delta broadcast, the
+grace-period seat handling in decisions/004, and drafted every decision
+record for me to check against what I actually meant.
 
 Everything else, the testable claims, the design judgements, the executable
 spec, is in `decisions/` and `spec/`.
