@@ -182,7 +182,7 @@ export function sweep(now = Date.now()): boolean {
         event(now, "elected", r.id, winner, `${winnerVotes}-${total - winnerVotes}`);
         // The bill number is its own sequence, separate from the round id:
         // every elected Presenter gets one, in order, whether or not they
-        // ever table a bill — so "#3" means the same thing on the page and
+        // ever table a bill - so "#3" means the same thing on the page and
         // in a log line, with no election rounds skipped into the count.
         const billNo = (one("SELECT coalesce(max(bill_no), 0) AS n FROM rounds")!.n as number) + 1;
         const bill = Number(run(

@@ -1,4 +1,4 @@
-# 002 — Ties, empty elections and silent Presenters
+# 002 - Ties, empty elections and silent Presenters
 
 - **Tied election** (including nobody voting): the candidate who declared first
   wins, then the lower citizen id. Standing early is rewarded; it's never random.

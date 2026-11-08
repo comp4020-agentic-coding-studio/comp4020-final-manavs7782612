@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 // README: "Everything is logged, and the log is the audit trail." Checks
 // that a governance event (declaring a candidate) produces both an
 // append-only row in `events` and a structured stdout line, with matching
-// details — the two forms of the same claim (CLAUDE.md's logging section).
+// details - the two forms of the same claim (CLAUDE.md's logging section).
 describe("the audit trail", () => {
   it("writes an append-only event row and a structured log line for the same action", () => {
     const dir = mkdtempSync(join(tmpdir(), "democracy-log-"));

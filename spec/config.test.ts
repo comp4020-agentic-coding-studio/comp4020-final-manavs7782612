@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 // config.ts reads its *_SECS env vars once, at import time, so each case
 // needs its own process (CLAUDE.md: "read once at boot, never from the
-// client" — this checks that the clamping it promises actually happens).
+// client" - this checks that the clamping it promises actually happens).
 function readMs(name: string, env: Record<string, string>): number {
   const out = execFileSync(
     process.execPath,

@@ -1,4 +1,4 @@
-# 001 — How a round resolves
+# 001 - How a round resolves
 
 **Decision.** A round resolves in one `UPDATE` guarded on its expected status and
 on `closes_at <= now`, run by a 1-second sweep (and safe to run from anywhere,

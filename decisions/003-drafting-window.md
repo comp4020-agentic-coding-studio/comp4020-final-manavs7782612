@@ -1,4 +1,4 @@
-# 003 — Drafting and voting are separate windows
+# 003 - Drafting and voting are separate windows
 
 The plan had one window per bill round. Splitting it into a drafting window
 (the Presenter writes) and a voting window (which starts the moment the bill is

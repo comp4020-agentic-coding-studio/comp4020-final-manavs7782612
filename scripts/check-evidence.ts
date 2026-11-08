@@ -18,7 +18,7 @@ const fail = (msg: string): void => {
 };
 
 if (!existsSync("CLAUDE.md")) {
-  fail("no CLAUDE.md in the repo root — the harness is part of what's marked");
+  fail("no CLAUDE.md in the repo root - the harness is part of what's marked");
 }
 
 const reflections = existsSync("reflections") ? readdirSync("reflections") : [];
@@ -31,7 +31,7 @@ const found = REFLECTIONS.filter((name) => reflections.includes(name));
 if (found.length > 0) {
   console.log(`✓ reflections/${found.join(", reflections/")}`);
 } else {
-  fail(`no reflection — each crit's cutoff reads its own: ${REFLECTIONS.join(", ")}`);
+  fail(`no reflection - each crit's cutoff reads its own: ${REFLECTIONS.join(", ")}`);
 }
 
 if (!existsSync("PROCESS.md")) {
@@ -42,7 +42,7 @@ if (!existsSync("PROCESS.md")) {
 const src = readFileSync("PROCESS.md", "utf8");
 
 if (src.includes("TEMPLATE:")) {
-  fail("PROCESS.md still contains the template comment — replace it with your own account");
+  fail("PROCESS.md still contains the template comment - replace it with your own account");
 }
 
 const shas = new Set<string>();

@@ -1,6 +1,6 @@
 # Deploy config for the course-managed Fly.io setup. Fly builds the Dockerfile
 # and runs whatever it produces, so the stack is yours. What's fixed is the
-# shape the course watches — leave these settings as they are:
+# shape the course watches - leave these settings as they are:
 #
 #   - one shared-cpu-1x machine with 256 MB of memory, so the app has to fit
 #   - one volume, mounted at /data: the only storage that survives a restart
@@ -29,7 +29,7 @@ PORT = "8080"
 [http_service]
 internal_port = 8080
 force_https = true
-# the machine stops when nobody's using it and starts on the next request —
+# the machine stops when nobody's using it and starts on the next request -
 # this is most of why the app costs cents, not dollars
 auto_stop_machines = "stop"
 auto_start_machines = true

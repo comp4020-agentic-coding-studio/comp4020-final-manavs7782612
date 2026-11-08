@@ -164,7 +164,7 @@ function renderControls(s) {
       actions.append(button("I want to be the Bill Presenter", false, () => post("/api/declare")));
     }
     for (const k of r.candidates) {
-      const label = `${k.name} — ${k.votes} vote${k.votes === 1 ? "" : "s"}`;
+      const label = `${k.name} - ${k.votes} vote${k.votes === 1 ? "" : "s"}`;
       actions.append(joined ? button(label, s.myVote === String(k.id), () => post("/api/vote", { choice: k.id })) : Object.assign(document.createElement("span"), { textContent: label }));
     }
   } else if (r.status === "drafting") {
@@ -187,7 +187,7 @@ function renderControls(s) {
 }
 
 function namesOrDash(list) {
-  return list.length ? list.join(", ") : "—";
+  return list.length ? list.join(", ") : "-";
 }
 
 // Shared by Bills Passed and Bills Failed: same shape (CLAUDE.md `passedBills`/

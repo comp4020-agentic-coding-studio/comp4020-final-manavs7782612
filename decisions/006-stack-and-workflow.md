@@ -1,4 +1,4 @@
-# 006 — Stack and agentic workflow
+# 006 - Stack and agentic workflow
 
 **Context.** A3 asks for a multi-user, real-time, persistent app, built and
 deployed inside a week, with every behavioural claim backed by a test that
@@ -10,17 +10,17 @@ learning a framework's idioms for either.
 **Options considered.**
 
 - *Framework (Astro, as the course default) vs. plain Node.* Astro earns its
-  keep solving multi-page SSR and islands hydration — a problem this app
+  keep solving multi-page SSR and islands hydration - a problem this app
   doesn't have. It's one page and a JSON API; a framework here would be
   surface area the agent has to route around, not use. This matches the
   general caution against adopting infrastructure sized for problems you
   don't have (the "mythical scale" argument in Bernhardt, *You Are Not
-  Google*, bernhardt.io/you-are-not-google — written about distributed
+  Google*, bernhardt.io/you-are-not-google - written about distributed
   systems, but the reasoning transfers to framework choice: pay for the
   complexity you need, not the complexity that's popular).
 - *SQLite vs. a managed Postgres add-on.* The persistence requirement is
   "survives restarts and redeploys," not "survives concurrent writers across
-  machines" — there's one Fly machine and one volume. SQLite with
+  machines" - there's one Fly machine and one volume. SQLite with
   `journal_mode = WAL` gives that for free, with no network hop and no
   second service to deploy or keep credentials for (SQLite's own WAL
   documentation, sqlite.org/wal.html, is the source for why WAL specifically:
@@ -47,7 +47,7 @@ learning a framework's idioms for either.
 ORM, no second service; CLAUDE.md written from a claim fixed before the
 server existed, so every rule traces to a clause of it.
 
-**Cost.** No framework means no free routing, templating or build step — the
+**Cost.** No framework means no free routing, templating or build step - the
 single-file server and hand-written client JS are the price. No ORM means
 every query is hand-checked for the guard it needs, which is slower to write
 than generating one, but is also the only way I'd trust an agent to extend it
