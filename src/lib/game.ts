@@ -309,13 +309,14 @@ export function passedBills(limit = -1): Row[] {
   return bills;
 }
 
-// Includes a silent Presenter's round (bill_text stays null: nothing was ever
-// tabled, so there's nothing to quote and no votes to name).
+// Excludes a silent Presenter's round: bill_text stays null when nothing was
+// ever tabled, and a bill nobody wrote isn't a failed bill, just an empty
+// round. The feed's "silent" event is where that outcome lives instead.
 export function failedBills(limit = -1): Row[] {
   const bills = all(
     `SELECT r.id, r.bill_no AS billNo, r.bill_text AS text, r.yea, r.nay, r.resolved_at AS resolvedAt, c.name AS presenter
        FROM rounds r JOIN citizens c ON c.id = r.presenter_id
-      WHERE r.phase = 'bill' AND r.bill_outcome = 'failed'
+      WHERE r.phase = 'bill' AND r.bill_outcome = 'failed' AND r.bill_text IS NOT NULL
       ORDER BY r.resolved_at DESC, r.id DESC LIMIT ?`,
     limit,
   );

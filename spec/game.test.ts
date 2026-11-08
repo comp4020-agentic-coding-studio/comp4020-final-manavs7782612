@@ -106,10 +106,9 @@ describe("a round of government", { timeout: 300_000 }, () => {
     expect(after.feed.some((f: any) => f.kind === "silent" && f.name === c.name)).toBe(true);
     expect((await call("/api/bills")).json.some((x: any) => x.id === s.round.id)).toBe(false);
 
+    // A silent Presenter never tabled a bill, so there's no bill to have
+    // failed - it's only the "silent" feed event above, not a Bills Failed entry.
     const failed = (await call("/api/bills/failed")).json;
-    const mine = failed.find((x: any) => x.id === s.round.id);
-    expect(mine).toMatchObject({ text: null, presenter: c.name, yea: 0, nay: 0 });
-    expect(mine.yeaNames).toEqual([]);
-    expect(mine.nayNames).toEqual([]);
+    expect(failed.some((x: any) => x.id === s.round.id)).toBe(false);
   });
 });

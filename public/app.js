@@ -190,10 +190,10 @@ function namesOrDash(list) {
   return list.length ? list.join(", ") : "-";
 }
 
-// Shared by Bills Passed and Bills Failed: same shape (CLAUDE.md `passedBills`/
+// Shared by Bills Passed and Bills Failed: same shape (`passedBills`/
 // `failedBills` both return `{billNo, text, presenter, yea, nay, resolvedAt,
-// yeaNames, nayNames}`), just a different outcome word and an empty `text`
-// when a silent Presenter never tabled anything.
+// yeaNames, nayNames}`), just a different outcome word. A silent Presenter's
+// round never reaches either list - `text` is never null here.
 function renderBillList(listEl, noneEl, bills, outcome) {
   const li = (b) => {
     const el = document.createElement("li");
